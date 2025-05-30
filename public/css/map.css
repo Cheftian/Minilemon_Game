@@ -1,0 +1,120 @@
+body {
+  margin: 0;
+  overflow: hidden; /* mencegah scroll seluruh halaman */
+  font-family: sans-serif;
+}
+
+#map-container-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+#map-title {
+  position: fixed;
+  top: 10px;
+  left: 20px;
+  z-index: 9999;
+  background-color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+}
+
+#controls {
+  position: fixed;
+  top: 60px;
+  left: 20px;
+  z-index: 9999;
+  background-color: white;
+  padding: 5px;
+  border-radius: 5px;
+}
+
+#map-container-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: scroll;
+}
+
+#map-container {
+  position: relative;
+  width: max-content;
+  height: max-content;
+}
+
+#player {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  pointer-events: none;
+}
+
+#player img.layer {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+  object-fit: none;
+  transition: object-position 0.1s steps(1);
+}
+
+
+.layer-skin    { z-index: 1; }
+.layer-bottom  { z-index: 2; }
+.layer-shoes   { z-index: 3; }
+.layer-top     { z-index: 4; }
+.layer-jacket  { z-index: 5; }
+.layer-accessory { z-index: 6; }
+.layer-hair    { z-index: 7; }
+.layer-clothesinset { z-index: 8; }
+
+.player-name {
+  position: absolute;
+  top: -18px;
+  left: -8px;
+  font-size: 10px;
+  font-weight: bold;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.other-player {
+  width: 32px;
+  height: 32px;
+  position: absolute;
+  pointer-events: none;
+}
+
+.other-player img.layer {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+  object-fit: none;
+  transition: object-position 0.1s steps(1);
+}
+
+.player-body {
+  width: 100%;
+  height: 100%;
+  background-color: white;
+  border: 1px solid #999;
+  box-shadow: 0 0 2px rgba(0,0,0,0.3);
+  border-radius: 4px;
+}
+
+.player-name {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 1px 1px 2px black;
+  pointer-events: none;
+}

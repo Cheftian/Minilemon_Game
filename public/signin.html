@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign In</title>
+    <link rel="stylesheet" href="css/signin.css">
+</head>
+<body>
+    <div class="auth-container">
+       <div class="logo">
+         <img src="images/logo.png" alt="logo">
+       </div>
+        <h2>Welcome To MLS!</h2>
+        <h3>Email</h3>
+        <input type="email" id="email" placeholder="example@gmail.com" required>
+        <h3>Password</h3>
+        <input type="password" id="password" placeholder="enter your password" required>
+        <button onclick="signIn()">SIGN IN</button>
+        <div class="link">
+            Don't have an account? <a href="signup.html">Sign up</a>
+        </div>
+        <div id="error-message" class="error-message"></div>
+    </div>
+
+<script>
+    function signIn() {
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value.trim();
+        const errorDiv = document.getElementById("error-message");
+
+        if (!email || !password) {
+            errorDiv.textContent = "Email dan password wajib diisi.";
+            return;
+        }
+
+        fetch('http://localhost:8000/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Email: email, Password: password })
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("Login gagal");
+            return res.json();
+        })
+        .then(data => {
+            // Simpan seluruh data user dan token ke localStorage
+            localStorage.setItem('user_id', data.user.User_ID);
+            localStorage.setItem('user_image_profile', data.user.Profile_Image);
+            localStorage.setItem('user_characters', data.user.Character_ID);
+            localStorage.setItem('username', data.user.Username);
+            localStorage.setItem('email', data.user.Email);
+            localStorage.setItem('token', data.token); // JWT API key
+
+            // Jika ada data tambahan di user, bisa disimpan juga
+            // localStorage.setItem('role', data.user.Role);
+
+            // Arahkan ke halaman character creation
+            window.location.href = 'home.html';
+        })
+        .catch(() => {
+            errorDiv.textContent = "Login gagal. Pastikan email dan password benar.";
+        });
+    }
+</script>
+
+</body>
+</html>

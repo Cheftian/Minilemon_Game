@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Character Creation</title>
+  <link rel="stylesheet" href="css/character-creation.css" />
+</head>
+<body>
+    <div id="greeting" class="greeting"></div>
+    <h1>Buat Karakter Kamu</h1>
+  
+    <div class="main-container">
+        <div class="preview-wrapper">
+          <div id="character-preview" class="character-preview"></div>
+        </div>
+      
+        <div class="clothing-columns">
+          <div id="clothing-left" class="clothing-column"></div>
+          <div id="clothing-right" class="clothing-column"></div>
+        </div>
+      </div>
+      
+    <button id="submit-character">Pilih Karakter</button>
+  
+    <script>
+      const types = ['Skin', 'Bottom', 'Shoes', 'Top', 'Jacket', 'Accessory', 'Hair', 'ClothesInSet'];
+      const selected = {};
+      const currentIndex = {};
+      const clothingData = {};
+      const userId = localStorage.getItem('user_id');
+      const username = localStorage.getItem('username');
+      const previewContainer = document.getElementById('character-preview');
+      let characterId = null;
+  
+      if (username) {
+        document.getElementById('greeting').innerHTML = `👋 Halo, <strong>${username}</strong>! Silakan buat atau edit karaktermu!`;
+      }
+  
+      async function fetchAllClothes(type) {
+        const res = await fetch(`http://localhost:8000/clothes/${type}`);
+        const data = await res.json();
+        return [{ [`${type}_ID`]: null, Name: 'None', Image_URL: '' }, ...data];
+      }
+  
+      function updatePreview() {
+        previewContainer.innerHTML = '';
+        types.forEach(type => {
+          const items = clothingData[type];
+          const index = currentIndex[type] ?? 0;
+          const item = items?.[index];
+          if (item) {
+            const idKey = `${type}_ID`;
+            selected[idKey] = item[idKey];
+            if (item.Image_URL) {
+              const img = document.createElement('img');
+              img.src = `http://localhost:8000/${item.Image_URL}`;
+              img.alt = item.Name;
+              img.className = `layer layer-${type.toLowerCase()}`;
+              previewContainer.appendChild(img);
+            }
+          }
+        });
+      }
+  
+      function createControls(type, items, index) {
+        const container = document.createElement('div');
+        container.className = 'carousel-container';
+        const title = document.createElement('h2');
+        title.textContent = type;
+        container.appendChild(title);
+        const nav = document.createElement('div');
+        nav.className = 'carousel';
+        const left = document.createElement('button');
+        left.textContent = '◀';
+        left.className = 'nav-btn';
+        left.onclick = () => {
+            currentIndex[type] = (currentIndex[type] - 1 + items.length) % items.length;
+            updatePreview();
+        };
+        const right = document.createElement('button');
+        right.textContent = '▶';
+        right.className = 'nav-btn';
+        right.onclick = () => {
+            currentIndex[type] = (currentIndex[type] + 1) % items.length;
+            updatePreview();
+        };
+        nav.appendChild(left);
+        nav.appendChild(right);
+        container.appendChild(nav);
+
+        // Masukkan ke kolom kiri atau kanan
+        const targetId = index < 4 ? 'clothing-left' : 'clothing-right';
+        document.getElementById(targetId).appendChild(container);
+        }
+
+  
+        async function loadAll() {
+            types.forEach(async (type, index) => {
+                const data = await fetchAllClothes(type);
+                clothingData[type] = data;
+
+                if (type === 'Skin') {
+                const defaultSkinIndex = data.findIndex(item => item.Skin_ID === 1);
+                currentIndex[type] = defaultSkinIndex !== -1 ? defaultSkinIndex : 0;
+                } else {
+                currentIndex[type] = 0;
+                }
+
+                createControls(type, data, index);
+            });
+
+            const userRes = await fetch(`http://localhost:8000/users/${userId}`);
+            const user = await userRes.json();
+            if (user.Character_ID) {
+                characterId = user.Character_ID;
+                const charRes = await fetch(`http://localhost:8000/characters/${characterId}`);
+                const character = await charRes.json();
+
+                types.forEach(type => {
+                const idKey = `${type}_ID`;
+                const id = character[idKey];
+                const list = clothingData[type];
+                const index = list.findIndex(item => item[idKey] === id);
+                currentIndex[type] = index !== -1 ? index : currentIndex[type];
+                });
+            }
+
+            updatePreview();
+            }
+
+  
+      document.getElementById('submit-character').addEventListener('click', async () => {
+        if (!userId) return alert("User belum login");
+        updatePreview();
+  
+        const payload = {};
+        types.forEach(type => {
+          const key = `${type}_ID`;
+          if (typeof selected[key] !== 'undefined') {
+            payload[key] = selected[key];
+          }
+        });
+  
+        try {
+          let response;
+  
+          if (characterId) {
+            response = await fetch(`http://localhost:8000/characters/${characterId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            localStorage.setItem('user_characters', data.user.Character_ID);
+            alert("Karakter berhasil diperbarui!");
+          } else {
+            response = await fetch('http://localhost:8000/characters', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            characterId = result.id;
+            
+            await fetch(`http://localhost:8000/users/${userId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ Character_ID: characterId })
+            });
+            
+            localStorage.setItem('user_characters', data.user.Character_ID);
+            alert("Karakter berhasil dibuat dan dikaitkan ke akun!");
+          }
+  
+        } catch (err) {
+          console.error("Error:", err);
+          alert("Gagal menyimpan karakter. Cek console.");
+        }
+      });
+  
+      loadAll();
+
+      // Animasi
+      function startIdleAnimation() {
+        const frameWidth = 32;
+        const frameHeight = 32;
+        const totalCols = 3;
+        const row = 0; // baris 0 (atas)
+
+        let currentCol = 0;
+
+        setInterval(() => {
+          const offsetX = -currentCol * frameWidth;
+          const offsetY = -row * frameHeight;
+
+          const layers = document.querySelectorAll('.character-preview .layer');
+          layers.forEach(layer => {
+            layer.style.objectPosition = `${offsetX}px ${offsetY}px`;
+          });
+
+          currentCol = (currentCol + 1) % totalCols;
+        }, 300);
+      }
+
+
+
+    startIdleAnimation();
+
+    </script>
+  </body>
+  
+</html>

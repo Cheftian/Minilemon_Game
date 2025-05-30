@@ -1,0 +1,184 @@
+/* Reset dasar */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #f4f7fa;
+  color: #333;
+  padding: 2rem;
+  line-height: 1.6;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 2rem;
+  font-size: 2.4rem;
+  color: #222;
+}
+
+.greeting {
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.main-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr; /* 4 kolom */
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.preview-wrapper {
+  grid-column: span 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #fff;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.clothing-columns {
+  display: contents;
+}
+
+.clothing-column {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-height: 700px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+/* ==== CHARACTER PREVIEW ==== */
+
+.character-preview {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  transform: scale(6); /* PERBESAR TAMPILAN */
+  transform-origin: top left;
+  background: #eee;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.character-preview .frame {
+  width: 32px;
+  height: 32px;
+  overflow: hidden;
+  position: relative;
+}
+
+.character-preview .layer {
+  position: absolute;
+  width: 96px;   /* Ukuran full tileset */
+  height: 128px;
+  object-fit: none;
+  image-rendering: pixelated;
+}
+
+/* Optional: Fade efek saat berpindah layer */
+.character-preview img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+  z-index: 1;
+  transition: opacity 0.3s ease;
+}
+
+/* ==== CLOTHING SECTIONS ==== */
+.clothing-sections {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  overflow-y: auto;
+  max-height: 700px;
+  padding-right: 1rem;
+}
+
+.carousel-container {
+  background: #fff;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.carousel-container h2 {
+  margin-bottom: 0.8rem;
+  font-size: 1.1rem;
+  color: #555;
+  text-align: center;
+}
+
+.carousel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+}
+
+.nav-btn {
+  font-size: 1.2rem;
+  background: #f0f0f0;
+  border: 2px solid #ccc;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-btn:hover {
+  background-color: #ddd;
+  border-color: #999;
+}
+
+/* ==== SUBMIT BUTTON ==== */
+#submit-character {
+  display: block;
+  margin: 0 auto;
+  padding: 0.8rem 1.6rem;
+  font-size: 1.1rem;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease;
+}
+
+#submit-character:hover {
+  background-color: #45a049;
+}
+
+/* ==== RESPONSIVE ====*/
+
+@media (max-width: 768px) {
+  .main-container {
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .clothing-sections {
+    width: 100%;
+    max-height: none;
+  }
+
+  .character-preview {
+    width: 220px;
+    height: 320px;
+  }
+}

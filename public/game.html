@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Meeting Room with Map</title>
+  <link rel="stylesheet" href="css/room.css">
+  <link rel="stylesheet" href="css/map.css">
+</head>
+<div id="username-modal" class="modal">
+  <div class="modal-content">
+    <h3>Enter Your Name</h3>
+    <input type="text" id="username-input" placeholder="Your name" />
+    <!-- <button onclick="saveUsername()">Enter</button> -->
+  </div>
+</div>
+<body>
+
+  <header>
+    <div class="header-content">
+      <span id="meeting-name" class="meeting-name"></span>
+      <span class="garis">|</span>
+      <button class="copy-btn" onclick="copyLink()">Copy Code
+        <!-- <img src="images/icons/copy link.png" alt="copyUrl"> -->
+      </button>
+    </div>
+  </header>
+
+  <main class="video-area">
+    <!-- Map Container -->
+    <div id="map-container-wrapper">
+      <div id="map-container"></div>
+      <div id="player">
+        <div class="player-name"></div>
+      </div>
+      <div id="other-players-container"></div>
+    </div>
+    
+    
+    <!-- Side Panels -->
+    <div class="side-panels">
+      
+      <!-- Chat -->
+      <div id="chat-panel" class="panel hidden">
+        <h3 class="chat-header">Chat</h3>
+        <div id="chat-subheader" class="chat-subheader">Broadcast - <span id="chat-space-name"></span></div>
+
+        <div id="chat-messages"></div>
+        
+        <div class="chat-input-container">
+          <input type="text" id="chat-input" placeholder="Type a message..." />
+          <div class="chat-settings-wrapper">
+            <button id="chat-settings">⋮</button>
+            
+            <!-- Dropdown Menu -->
+            <div id="chat-dropdown" class="dropdown hidden">
+              <button class="chat-mode-btn" data-mode="Broadcast">Broadcast</button>
+              <button class="chat-mode-btn" data-mode="Personal">Personal</button>
+              <button class="chat-mode-btn" data-mode="Area">Area</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      
+      <div id="participants-panel" class="panel hidden">
+        <h3>Participants</h3>
+        <ul id="participants-list"></ul>
+      </div>
+      
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-left">
+      <img src="images/logo.jpg" alt="Logo" class="logo"/>
+    <div class="user-info">
+      <span class="user-icon">
+        <img id="footer-profile-img" src="" alt="Profile" />
+      </span>
+      <div>
+        <div id="footer-username" class="username" onclick="openUsernameModal()" title="Click to Change Username">
+          Username
+        </div>
+        <button onclick="window.location.href='character-creation.html'">Edit Characters</button>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="microphone-btn">
+        <img src="images/icons/microphone.png" alt="microphone" class="mic-img" />
+      </button>
+      <button class="camera-btn">
+        <img src="images/icons/video.png" alt="camera" class="camera-img" />
+      </button>
+    </div>
+    <video id="camera-preview" autoplay muted playsinline style="display: none; width: 120px; height: 90px; margin-left: 10px; border-radius: 8px; object-fit: cover;"></video>
+    </div>
+    
+    <div class="footer-right">
+      <span class="chat-icon" onclick="togglePanel('chat')">
+        <img src="images/icons/chat.png" alt="chat" class="chat-img">
+      </span>
+      <span class="participants-icon" onclick="togglePanel('participants')">
+        <img src="images/icons/participant.png" alt="participant" class="participant-img">
+      </span>
+      <button class="leave-btn" onclick="leaveMeeting()">
+        <img src="images/icons/leave.png" alt="leave" class="leave-img">
+      </button>
+    </div>
+  </footer>
+
+
+  <script>
+
+  // ===== 1. Global Variables =====
+  const userId = localStorage.getItem("user_id");
+  const token = localStorage.getItem("token");
+  const currentUserId = userId;
+  if (!userId || !token) {
+    window.location.href = "signin.html";
+  }
+
+  const username = localStorage.getItem("username");
+  const spacesMemberId = localStorage.getItem("spaces_member_id");
+  
+  const spaceObj = JSON.parse(localStorage.getItem("currentSpace"));
+  const spaceId = spaceObj?.id;
+
+  const currentRooms = JSON.parse(localStorage.getItem('currentRooms')) || [];
+  const currentRoomId = localStorage.getItem("currentRoomId")
+  
+  
+  let activeChatAreaId = null;
+  let currentAreaObjectId = null;
+  let isInArea = false;
+  
+  const otherPlayersMap = new Map();
+  const otherPlayersContainer = document.getElementById("other-players-container");
+  
+  let socket = null;
+  
+  let currentMap = 'data/lantai1.json';
+  let player = document.getElementById('player');
+  let posX = 0, posY = 0;
+  let colliders = [], chatAreas = [], privateAreas = [], roomTriggers = [], roomSpawners = [];
+  let zoomLevel = 1;
+  
+  let localStream = null;
+  let micActive = false;
+  let camActive = false;
+  const previewElement = document.getElementById("camera-preview");
+  
+  // ===== 2. Load User Data =====
+  fetchRoomsPosition(spaceId).then(() => {
+    const currentRoomId = localStorage.getItem("currentRoomId");
+    const spacesMemberId = localStorage.getItem("spaces_member_id");
+    const username = localStorage.getItem("username");
+    const characterID = localStorage.getItem("user_characters"); // <-- Tambahkan ini
+
+    if (!spacesMemberId || !username || !currentRoomId || !characterID) {
+      console.error("Missing required data from localStorage", {
+        spacesMemberId,
+        username,
+        currentRoomId,
+        characterID
+      });
+      return;
+    }
+
+    fetch(`http://localhost:8000/users/${userId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(user => {
+      document.getElementById("footer-username").textContent = user.Username;
+      document.getElementById("footer-profile-img").src = "http://localhost:8000/" + user.Profile_Image;
+
+      const nameTag = document.createElement("div");
+      nameTag.className = "player-name";
+      nameTag.textContent = user.Username;
+      document.getElementById("player").appendChild(nameTag);
+
+      socket = new WebSocket("ws://localhost:8080");
+
+      socket.addEventListener("open", () => {
+        console.log("[WebSocket] Connected");
+
+        sendWebSocketRequest("register", {
+          SpacesMember_ID: spacesMemberId,
+          Username: username,
+          RoomID: currentRoomId,
+          Character_ID: characterID // <-- Kirim ke server
+        });
+
+        loadMap();
+      });
+
+      socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log("[WebSocket] Received:", data);
+
+
+        if (data.type === "chat_message") {
+          const { Message, Username, Profile_Image } = data.data;
+          const currentUser = localStorage.getItem("username");
+
+          const msgWrapper = document.createElement("div");
+          msgWrapper.className = "chat-message";
+          msgWrapper.style.display = "flex";
+          msgWrapper.style.flexDirection = "column";
+          msgWrapper.style.alignItems = Username === currentUser ? "flex-end" : "flex-start";
+
+          const userInfo = document.createElement("div");
+          userInfo.className = "chat-info";
+
+          const img = document.createElement("img");
+          img.src = Profile_Image || "https://via.placeholder.com/30";
+
+          const name = document.createElement("div");
+          name.className = "chat-username";
+          name.textContent = Username;
+
+          userInfo.appendChild(img);
+          userInfo.appendChild(name);
+
+          const bubble = document.createElement("div");
+          bubble.className = "chat-bubble";
+          bubble.textContent = Message;
+
+          msgWrapper.appendChild(userInfo);
+          msgWrapper.appendChild(bubble);
+
+          messages.appendChild(msgWrapper);
+          messages.scrollTop = messages.scrollHeight;
+        }
+
+        if (data.type === "same_room_result" && data.data) {
+          data.data.forEach(player => {
+            const playerId = String(player.id);
+
+            if (playerId !== String(spacesMemberId)) {
+              const direction = player.FacingDirection ?? 0;
+
+            if (otherPlayersMap.has(playerId)) {
+              moveOtherPlayer(
+                playerId,
+                player.PosX * 32,
+                player.PosY * 32,
+                player.FacingDirection ?? 0
+              );
+
+              } else {
+                addOtherPlayer({
+                  id: playerId,
+                  Username: player.Username,
+                  PosX: player.PosX * 32,
+                  PosY: player.PosY * 32,
+                  Character_ID: player.Character_ID,
+                  FacingDirection: direction,
+                });
+              }
+            }
+          });
+        }
+      };
+
+    })
+    .catch(err => {
+      console.error("Failed to load user info:", err);
+    });
+  }).catch(err => {
+    console.error("Failed to fetch room positions:", err);
+  });
+
+
+  // Fungsi untuk kirim data ke server WebSocket
+  function sendWebSocketRequest(type, payload) {
+    const message = JSON.stringify({ type, payload });
+    console.log("[WebSocket] Sending:", message); // Tambahan debug
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(message);
+    } else {
+      console.warn('WebSocket belum siap');
+    }
+  }
+
+  
+  async function fetchRoomsPosition(spacesId) {
+    const response = await fetch(`http://localhost:8000/rooms/space/${spacesId}`);
+    if (!response.ok) {
+      throw new Error('Rooms not found for this space');
+    }
+
+    const rooms = await response.json();
+
+    // Ambil Room_ID dan Room_Name, simpan sebagai array objek
+    const roomData = rooms.map(room => ({
+      Room_ID: room.Room_ID,
+      Room_Name: room.Room_Name
+    }));
+
+    // Simpan ke localStorage dalam bentuk string JSON
+    localStorage.setItem('currentRooms', JSON.stringify(roomData));
+
+
+      const container = document.getElementById('map-container');
+      let mapName = 'lantai1';
+
+
+      // Cari Room_ID yang sesuai dengan Room_Name (lantai1 atau lantai2)
+      const matchedRoom = rooms.find(room => room.Room_Name === mapName);
+      if (matchedRoom) {
+        localStorage.setItem('currentRoomId', matchedRoom.Room_ID);
+        console.log(`[Map] Berpindah ke ${mapName} dengan Room_ID ${matchedRoom.Room_ID}`);
+      } else {
+        console.warn(`[Map] Tidak ditemukan Room dengan nama ${mapName}`);
+      }
+
+    return roomData;
+  }
+
+
+    // ===== 3. Map Rendering =====
+    // loadMap();
+
+    function getTilesetForId(tilesets, id) {
+      let selected = null;
+      for (let i = 0; i < tilesets.length; i++) {
+        if (id >= tilesets[i].firstgid) {
+          selected = tilesets[i];
+        }
+      }
+      return selected;
+    }
+    // ===== Create Chat Area saat halaman dibuka =====
+    if (spaceId) {
+      
+      fetch(`http://localhost:8000/chat_areas/create/${spaceId}`, {
+        method: "POST",
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! Status: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(data => {
+        console.log("Chat area created:", data);
+      })
+      .catch(err => {
+        console.error("Failed to create chat area:", err.message);
+      });
+    }
+
+    async function loadMap(jsonPath = 'data/lantai1.json', fromRoomTrigger = false) {
+      const container = document.getElementById('map-container');
+      
+      const rooms = JSON.parse(localStorage.getItem('currentRooms') || '[]');
+      let mapName = 'lantai1'; // Default map, sesuaikan dengan kondisi real-time di proyekmu
+
+      // Misalnya mapName bisa ditentukan berdasarkan kondisi tertentu di game:
+      // mapName = determineCurrentMap(); 
+
+      // Cari Room_ID yang sesuai dengan Room_Name (lantai1 atau lantai2)
+      const matchedRoom = rooms.find(room => room.Room_Name === mapName);
+      if (matchedRoom) {
+        localStorage.setItem('currentRoomId', matchedRoom.Room_ID);
+        console.log(`[Map] Berpindah ke ${mapName} dengan Room_ID ${matchedRoom.Room_ID}`);
+      } else {
+        console.warn(`[Map] Tidak ditemukan Room dengan nama ${mapName}`);
+      }
+
+      // Bersihkan elemen pemain lain dari DOM
+      for (const [id, el] of otherPlayersMap) {
+        el.remove();
+      }
+      otherPlayersMap.clear();
+      
+      container.innerHTML = ''; // Clear old map
+
+      const json = await fetch(jsonPath).then(res => res.json());
+      
+
+      const tilesets = await Promise.all(
+        json.tilesets.map(async (ts) => {
+          const tsxText = await fetch(`data/${ts.source}`).then(res => res.text());
+          const parser = new DOMParser();
+          const xml = parser.parseFromString(tsxText, "application/xml");
+          const image = xml.querySelector('image');
+          const imageSource = image.getAttribute('source').replace('../images/tilesets', 'images/tilesets');
+          const tileWidth = parseInt(xml.querySelector('tileset').getAttribute('tilewidth'));
+          const tileHeight = parseInt(xml.querySelector('tileset').getAttribute('tileheight'));
+          const columns = parseInt(xml.querySelector('tileset').getAttribute('columns'));
+
+          return { firstgid: ts.firstgid, image: imageSource, tileWidth, tileHeight, columns };
+        })
+      );
+
+      container.style.position = 'relative';
+      container.style.width = `${json.width * 32}px`;
+      container.style.height = `${json.height * 32}px`;
+
+      let playerSpawned = false;
+      colliders = [];
+      chatAreas = [];
+      privateAreas = [];
+      roomTriggers = [];
+      roomSpawners = [];
+
+      json.layers.forEach((layer, zIndex) => {
+        const layerDiv = document.createElement('div');
+        layerDiv.style = `position: absolute; top: 0; left: 0; width: ${layer.width * 32}px; height: ${layer.height * 32}px; z-index: ${zIndex}`;
+        layerDiv.className = 'tile-layer';
+
+        if (layer.type === "tilelayer" && layer.data) {
+          layer.data.forEach((tileId, index) => {
+            const tile = document.createElement('div');
+            tile.style = `width: 32px; height: 32px; position: absolute;`;
+
+            const x = index % layer.width;
+            const y = Math.floor(index / layer.width);
+            tile.style.left = `${x * 32}px`;
+            tile.style.top = `${y * 32}px`;
+
+            const tileset = getTilesetForId(tilesets, tileId);
+            if (tileset && tileId !== 0) {
+              const localId = tileId - tileset.firstgid;
+              const col = localId % tileset.columns;
+              const row = Math.floor(localId / tileset.columns);
+              tile.style.backgroundImage = `url(${tileset.image})`;
+              tile.style.backgroundPosition = `-${col * tileset.tileWidth}px -${row * tileset.tileHeight}px`;
+            }
+
+            layerDiv.appendChild(tile);
+          });
+        }
+
+        container.appendChild(layerDiv);
+
+        if (!playerSpawned && zIndex === 3) {
+          player.style.zIndex = 3.5;
+          container.appendChild(player);
+          playerSpawned = true;
+        }
+
+        if (layer.type === "objectgroup") {
+          switch (layer.name) {
+            case "collider": colliders = layer.objects; break;
+            case "group_chat_area": chatAreas = layer.objects; break;
+            case "private_chat_area": privateAreas = layer.objects; break;
+            case "room_trigger": roomTriggers = layer.objects; break;
+            case "room_spawner":
+              if (fromRoomTrigger) {
+                const spawn = layer.objects[0];
+                posX = spawn.x;
+                posY = spawn.y;
+                player.style.left = `${posX}px`;
+                player.style.top = `${posY}px`;
+
+                // Konversi posisi pixel ke grid
+                const gridX = Math.floor(posX / 32);
+                const gridY = Math.floor(posY / 32);
+
+                // Kirim posisi ke backend melalui WebSocket
+                sendWebSocketRequest('update', {
+                  SpacesMember_ID: spacesMemberId,
+                  updateData: {
+                    PosX: gridX,
+                    PosY: gridY,
+                    FacingDirection: 'down',
+                    ChatArea_ID: null
+                  }
+                });
+              }
+              break;
+
+            case "player_spawner":
+              if (!fromRoomTrigger) {
+                const spawn = layer.objects[0];
+                posX = spawn.x;
+                posY = spawn.y;
+                player.style.left = `${posX}px`;
+                player.style.top = `${posY}px`;
+
+                // Konversi posisi pixel ke grid
+                const gridX = Math.floor(posX / 32);
+                const gridY = Math.floor(posY / 32);
+
+                // Kirim posisi ke backend melalui WebSocket
+                sendWebSocketRequest('update', {
+                  SpacesMember_ID: spacesMemberId,
+                  updateData: {
+                    PosX: gridX,
+                    PosY: gridY,
+                    FacingDirection: 'down',
+                    ChatArea_ID: null
+                  }
+                });
+
+              }
+              break;
+
+
+          }
+        }
+      });
+
+      const title = document.getElementById('map-title');
+      if (title) {
+        title.textContent = jsonPath.includes('lantai2') ? 'Peta Lantai 2' : 'Peta Lantai 1';
+      }
+
+      const wrapper = document.getElementById('map-container-wrapper');
+      wrapper.scrollTo({ left: posX - wrapper.clientWidth / 2 + 16, top: posY - wrapper.clientHeight / 2 + 16, behavior: 'instant' });
+      // fetchAndRenderOtherPlayers();
+    }
+
+    // ===== 4. Player Movement =====
+
+    
+    function smoothMovePlayer(dx, dy, walkDirection) {
+      const stepCount = 8;
+      const stepSize = 4;
+      let step = 0;
+
+      const oldX = posX;
+      const oldY = posY;
+      
+      const nextX = posX + dx * 32;
+      const nextY = posY + dy * 32;
+      
+      if (isColliding(nextX, nextY)) return;
+      
+      isMoving = true;
+      startWalkAnimation(walkDirection);
+      
+      const interval = setInterval(() => {
+        step++;
+        posX += dx * stepSize;
+        posY += dy * stepSize;
+
+        player.style.left = posX + 'px';
+        player.style.top = posY + 'px';
+        
+        const wrapper = document.getElementById('map-container-wrapper');
+        wrapper.scrollTo({
+          left: posX - wrapper.clientWidth / 2 + 16,
+          top: posY - wrapper.clientHeight / 2 + 16,
+          behavior: 'instant'
+        });
+        
+        if (step >= stepCount) {
+          clearInterval(interval);
+          isMoving = false;
+          stopWalkAnimation();
+          
+          checkAreas(posX, posY, chatAreas.concat(privateAreas), 'Chat Area');
+          checkRoomTrigger(posX, posY);
+          
+          // ✅ Bandingkan posisi lama dan baru
+          if (oldX !== posX || oldY !== posY) {
+            const deltaX = posX - oldX;
+            const deltaY = posY - oldY;
+            const direction = getDirection(deltaX, deltaY);
+            console.log("Sending update to backend with direction:", direction);
+            updatePlayerPositionBackend(direction);
+          }
+        }
+      }, 30);
+    }
+    
+    
+    function isColliding(x, y) {
+      return colliders.some(c =>
+      x < c.x + c.width && x + 32 > c.x && y < c.y + c.height && y + 32 > c.y
+    );
+    }
+
+    function getDirection(deltaX, deltaY) {
+      if (deltaX === 32) return 'right';
+      if (deltaX === -32) return 'left';
+      if (deltaY === 32) return 'down';
+      if (deltaY === -32) return 'up';
+      return null;
+    }
+    
+    function updatePlayerPositionBackend(direction) {
+      if (!direction) return;
+      sendWebSocketRequest('move', {
+        SpacesMember_ID: spacesMemberId,
+        direction
+      });
+    }
+
+    // Input Event
+    let isMoving = false;
+    let moveQueue = [];
+    
+    document.addEventListener('keydown', function(e) {
+      // Jika sedang mengetik di chat input, hentikan input gerakan
+      const activeElement = document.activeElement;
+      if (activeElement && activeElement.id === 'chat-input') return;
+
+      const key = e.key.toLowerCase();
+      let dx = 0, dy = 0, dir = 0;
+
+      if (isMoving) return;
+
+      switch (key) {
+        case 'w':
+          dy = -1;
+          dir = 1;
+          break;
+        case 's':
+          dy = 1;
+          dir = 0;
+          break;
+        case 'a':
+          dx = -1;
+          dir = 2;
+          break;
+        case 'd':
+          dx = 1;
+          dir = 3;
+          break;
+        default:
+          return;
+      }
+
+      smoothMovePlayer(dx, dy, dir);
+    });
+
+      document.addEventListener('keyup', stopWalkAnimation);
+      
+      // ===== 5. Multiplayer Realtime Rendering =====
+      
+      const otherPlayerAnimationFrames = new Map(); // frame index
+      const otherPlayerDirections = new Map(); // direction
+      const otherPlayerIntervals = new Map(); // interval IDs
+
+      const DIRECTION_MAP = {
+        down: 0,
+        up: 1,
+        left: 2,
+        right: 3
+      };
+
+
+      function moveOtherPlayer(id, x, y, directionStr = "down") {
+        const el = otherPlayersMap.get(String(id));
+        if (!el) return;
+
+        const direction = DIRECTION_MAP[directionStr] ?? 0;
+
+        const oldX = parseInt(el.style.left) || 0;
+        const oldY = parseInt(el.style.top) || 0;
+        const moved = oldX !== x || oldY !== y;
+
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+
+        if (moved) {
+          startOtherPlayerAnimation(id, direction);
+
+          if (el.stopAnimTimeout) clearTimeout(el.stopAnimTimeout);
+          el.stopAnimTimeout = setTimeout(() => stopOtherPlayerAnimation(id), 500);
+        }
+      }
+
+
+
+      async function addOtherPlayer(user) {
+        const userId = String(user.id);
+        if (otherPlayersMap.has(userId)) return;
+
+        const el = await createOtherPlayerElement(user);
+        el.style.left = `${user.PosX}px`;
+        el.style.top = `${user.PosY}px`;
+
+        otherPlayersMap.set(userId, el);
+        otherPlayersContainer.appendChild(el);
+        
+        const directionStr = user.FacingDirection ?? "down";
+        const direction = DIRECTION_MAP[directionStr] ?? 0;
+
+        otherPlayerDirections.set(userId, direction);
+        otherPlayerAnimationFrames.set(userId, 1); // idle tengah
+
+        const imgs = el.querySelectorAll('img.layer');
+        imgs.forEach(img => {
+          img.style.objectPosition = `-${32}px -${32 * direction}px`;
+        });
+
+      }
+
+
+      async function createOtherPlayerElement(user) {
+        const container = document.createElement("div");
+        container.className = "other-player";
+        container.style.width = "32px";
+        container.style.height = "32px";
+        container.style.position = "absolute";
+        container.style.pointerEvents = "none";
+
+        const nameTag = document.createElement("div");
+        nameTag.className = "player-name";
+        nameTag.textContent = user.Username;
+        container.appendChild(nameTag);
+
+        if (user.Character_ID) {
+          await loadCharacterLayers(user.Character_ID, container);
+        }
+
+        return container;
+      }
+
+      function startOtherPlayerAnimation(id, direction) {
+        const el = otherPlayersMap.get(id);
+        if (!el) return;
+
+        const imgs = el.querySelectorAll('img.layer');
+        otherPlayerDirections.set(id, direction);
+        otherPlayerAnimationFrames.set(id, 0);
+
+        // Hentikan animasi lama
+        if (otherPlayerIntervals.has(id)) {
+          clearInterval(otherPlayerIntervals.get(id));
+        }
+
+        const interval = setInterval(() => {
+          let frame = (otherPlayerAnimationFrames.get(id) + 1) % 3;
+          otherPlayerAnimationFrames.set(id, frame);
+
+          imgs.forEach(img => {
+            img.style.objectPosition = `-${32 * frame}px -${32 * direction}px`;
+          });
+        }, 150);
+
+        otherPlayerIntervals.set(id, interval);
+      }
+
+      function stopOtherPlayerAnimation(id) {
+        const el = otherPlayersMap.get(id);
+        if (!el) return;
+
+        if (otherPlayerIntervals.has(id)) {
+          clearInterval(otherPlayerIntervals.get(id));
+          otherPlayerIntervals.delete(id);
+        }
+
+        const direction = otherPlayerDirections.get(id) ?? 0;
+        const imgs = el.querySelectorAll('img.layer');
+
+        // Set frame idle tengah
+        imgs.forEach(img => {
+          img.style.objectPosition = `-${32}px -${32 * direction}px`;
+        });
+
+        otherPlayerAnimationFrames.set(id, 1);
+      }
+
+
+    // ===== 6. Area Check =====
+    async function checkAreas(x, y, areas, label) {
+      let foundArea = null;
+
+      for (const area of areas) {
+        if (
+          x < area.x + area.width &&
+          x + 32 > area.x &&
+          y < area.y + area.height &&
+          y + 32 > area.y
+        ) {
+          foundArea = area;
+          break;
+        }
+      }
+
+      // Jika masuk ke area baru
+      if (foundArea && foundArea.id !== currentAreaObjectId) {
+        if (activeChatAreaId) {
+          await leaveChatArea();
+        }
+
+        try {
+          const response = await fetch(`http://localhost:8000/chat_areas/object/${foundArea.id}`);
+          const data = await response.json();
+          const chatAreaId = data.ChatArea_ID;
+
+          if (chatAreaId) {
+            sendWebSocketRequest('enterchat', {
+              SpacesMember_ID: spacesMemberId,
+              ChatArea_ID: chatAreaId
+            });
+
+            console.log(`Entered ${label} (ChatArea_ID: ${chatAreaId})`);
+            activeChatAreaId = chatAreaId;
+            currentAreaObjectId = foundArea.id;
+            isInArea = true;
+            togglePanel("chat");
+          }
+        } catch (err) {
+          console.error(`Failed to enter ${label}:`, err);
+        }
+
+      } else if (!foundArea && activeChatAreaId && isInArea) {
+        // Hanya keluar satu kali jika sebelumnya berada dalam area
+        await leaveChatArea();
+        isInArea = false;
+      }
+    }
+
+    async function leaveChatArea() {
+      sendWebSocketRequest('leavechat', {
+        SpacesMember_ID: spacesMemberId
+      });
+
+      console.log(`Left chat area (ChatArea_ID: ${activeChatAreaId})`);
+      togglePanel("chat"); // tutup panel
+
+      activeChatAreaId = null;
+      currentAreaObjectId = null;
+    }
+
+    async function checkRoomTrigger(x, y) {
+      for (const trigger of roomTriggers) {
+        if (
+          x < trigger.x + trigger.width &&
+          x + 32 > trigger.x &&
+          y < trigger.y + trigger.height &&
+          y + 32 > trigger.y
+        ) {
+          // Ganti map
+          currentMap = currentMap.includes('lantai1') ? 'data/lantai2.json' : 'data/lantai1.json';
+
+          // Ambil currentRooms dari localStorage
+          const currentRooms = JSON.parse(localStorage.getItem('currentRooms')) || [];
+
+          // Tentukan Room_Name target berdasarkan map baru
+          const targetRoomName = currentMap.includes('lantai1') ? 'lantai1' : 'lantai2';
+
+          // Cari Room_ID yang sesuai dari daftar currentRooms
+          const targetRoom = currentRooms.find(room => room.Room_Name.toLowerCase() === targetRoomName.toLowerCase());
+
+          if (!targetRoom) {
+            console.error('Room not found for target name:', targetRoomName);
+            return;
+          }
+
+          const currentRoomId = targetRoom.Room_ID;
+
+          // Muat map
+          await loadMap(currentMap, true);
+
+          // Simpan Room_ID ke localStorage
+          localStorage.setItem('currentRoomId', currentRoomId);
+
+          // Kirim update posisi user ke server
+          sendWebSocketRequest('moveroom', {
+            SpacesMember_ID: spacesMemberId,
+            NewRoomID: currentRoomId,
+            PosX: 0,
+            PosY: 0,
+            FacingDirection: 'down'
+          });
+
+          break;
+        }
+      }
+    }
+
+
+
+    // ===== 7. Chat & Participants Panel =====
+    function copyLink() {
+      const currentSpace = JSON.parse(localStorage.getItem("currentSpace") || "{}");
+      if (currentSpace.code) {
+        const link = `${currentSpace.code}`;
+        navigator.clipboard.writeText(link).then(() => {
+          alert("Spaces Code copied to clipboard!");
+        });
+      } else {
+        alert("No space code found.");
+      }
+    }
+
+    function togglePanel(type) {
+      const chatPanel = document.getElementById("chat-panel");
+      const participantsPanel = document.getElementById("participants-panel");
+      if (type === "chat") {
+        chatPanel.classList.toggle("hidden");
+        participantsPanel.classList.add("hidden");
+      } else if (type === "participants") {
+        participantsPanel.classList.toggle("hidden");
+        chatPanel.classList.add("hidden");
+      }
+    }
+
+    function leaveMeeting() {
+        if (!spacesMemberId || !spaceId) {
+            alert("Missing space member or space ID.");
+            return;
+        }
+
+        // 1. Hapus UserPosition
+        fetch(`http://localhost:8000/userposition/leave/${spacesMemberId}`, {
+            method: "DELETE",
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        .then(() => {
+            console.log("UserPosition deleted");
+
+            // 2. Hapus ChatArea setelah UserPosition berhasil dihapus
+            return fetch(`http://localhost:8000/chat_areas/delete/${spaceId}`, {
+                method: "DELETE",
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+        })
+        .then(() => {
+            console.log("Chat area deleted");
+            // 3. Bersihkan localStorage dan kembali ke halaman utama
+            localStorage.removeItem("spaces_member_id");
+            localStorage.removeItem("currentSpace");
+            window.location.href = "home.html";
+        })
+        .catch(err => {
+            console.error("Failed to leave meeting or delete chat area:", err);
+            alert("Error while leaving space.");
+        });
+    }
+
+
+    // ===== 8. DOM Ready Logic =====
+    document.addEventListener("DOMContentLoaded", () => {
+      
+      //Spaces Name Logic
+      const currentSpace = JSON.parse(localStorage.getItem("currentSpace") || "{}");
+      if (currentSpace.name) {
+        document.getElementById("meeting-name").textContent = currentSpace.name;
+      }
+
+      // Username Modal Logic
+      const usernameInput = document.getElementById("username-input");
+      if (usernameInput) {
+        usernameInput.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            saveUsername();
+          }
+        });
+      }
+      const storedName = localStorage.getItem("username");
+      if (storedName) {
+        document.querySelector(".user-info .username").textContent = storedName;
+        document.getElementById("username-modal").style.display = "none";
+      } else {
+        document.getElementById("username-modal").style.display = "flex";
+      }
+
+      const input = document.getElementById("chat-input");
+      console.log("[DEBUG] Chat Input:", input); // Pastikan bukan null
+
+      if (!input) {
+        console.error("Element #chat-input tidak ditemukan!");
+        return;
+      }
+
+      input.addEventListener("keydown", (e) => {
+        console.log("[DEBUG] Key pressed:", e.key);
+      });
+
+
+    });
+
+    // ===== 9. Camera Behavior =====
+    const videoArea = document.querySelector('.video-area');
+    videoArea.classList.add('zoomable');
+    videoArea.addEventListener('wheel', (e) => {
+      if (!e.target.closest('.video-area')) return;
+      e.preventDefault();
+      const delta = Math.sign(e.deltaY);
+      const zoomStep = 0.1;
+      if (delta < 0 && zoomLevel < 2) zoomLevel += zoomStep;
+      else if (delta > 0 && zoomLevel > 1) zoomLevel -= zoomStep;
+      videoArea.style.transform = `scale(${zoomLevel})`;
+    }, { passive: false });
+
+    // ===== 10. Username Modal =====
+    function openUsernameModal() {
+      document.getElementById("username-modal").style.display = "flex";
+      const input = document.getElementById("username-input");
+      input.value = localStorage.getItem("username") || "";
+      input.focus();
+    }
+    
+    async function saveUsername() {
+      const input = document.getElementById("username-input");
+      const newUsername = input.value.trim();
+      const userId = localStorage.getItem("user_id"); // Pastikan ID user tersimpan di localStorage
+      
+      if (newUsername && userId) {
+        try {
+          const response = await fetch(`http://localhost:8000/users/${userId}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ Username: newUsername }),
+          });
+          
+          if (!response.ok) throw new Error("Failed to update username");
+          
+          localStorage.setItem("username", newUsername);
+          
+          const usernameDisplay = document.querySelector(".user-info .username");
+          if (usernameDisplay) usernameDisplay.textContent = newUsername;
+          
+          document.getElementById("username-modal").style.display = "none";
+        } catch (error) {
+          alert("Error updating username: " + error.message);
+        }
+      }
+    }
+    
+    // ===== 11. Controls =====    
+    document.querySelector(".microphone-btn").addEventListener("click", async function () {
+      micActive = !micActive;
+      this.classList.toggle("active", micActive);
+      
+      await updateMemberStatus({ Active_Mic: micActive });
+      
+      if (micActive) {
+        try {
+          localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          console.log("Microphone aktif");
+        } catch (err) {
+          console.error("Gagal menyalakan mic:", err);
+        }
+      } else {
+        if (localStream) {
+          localStream.getAudioTracks().forEach(track => track.stop());
+          console.log("Microphone dimatikan");
+        }
+      }
+    });
+    
+    document.querySelector(".camera-btn").addEventListener("click", async function () {
+      camActive = !camActive;
+      this.classList.toggle("active", camActive);
+      
+      await updateMemberStatus({ Active_Video: camActive });
+      
+      if (camActive) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          if (!localStream) localStream = stream;
+          else {
+            // tambahkan track video ke stream utama
+            stream.getVideoTracks().forEach(track => localStream.addTrack(track));
+          }
+          previewElement.srcObject = stream;
+          previewElement.style.display = "block";
+          console.log("Kamera aktif & preview ditampilkan");
+        } catch (err) {
+          console.error("Gagal menyalakan kamera:", err);
+        }
+      } else {
+        if (previewElement.srcObject) {
+          previewElement.srcObject.getTracks().forEach(track => track.stop());
+          previewElement.srcObject = null;
+        }
+        previewElement.style.display = "none";
+        console.log("Kamera dimatikan & preview disembunyikan");
+      }
+    });
+    
+    async function updateMemberStatus(statusUpdate) {
+      if (!spacesMemberId) {
+        console.warn("SpacesMember_ID tidak ditemukan.");
+        return;
+      }
+      
+      try {
+        const response = await fetch(`http://localhost:8000/spacemember/status/${spacesMemberId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(statusUpdate),
+        });
+        
+        if (!response.ok) {
+          throw new Error("Gagal update status.");
+        }
+        
+        const result = await response.json();
+        console.log("Status diperbarui:", result.member);
+      } catch (error) {
+        console.error("Error saat update status:", error.message);
+      }
+    }
+    
+    // ===== 12. Participant =====
+    setInterval(fetchAndRenderParticipants, 1000); // update setiap 3 detik
+    fetchAndRenderParticipants(); // panggil langsung saat awal
+    async function fetchAndRenderParticipants() {
+    const spaceId = JSON.parse(localStorage.getItem("currentSpace"))?.id;
+    if (!spaceId) return;
+
+    try {
+      const response = await fetch(`http://localhost:8000/spacemember/${spaceId}`);
+      const data = await response.json();
+      
+      const list = document.getElementById("participants-list");
+      list.innerHTML = ""; // kosongkan daftar
+      
+      data.forEach(member => {
+        const li = document.createElement("li");
+        const name = member.user?.Username || "Unknown";
+        const isAdmin = member.Role === "Admin";
+        const online = member.Online ? "🟢" : "⚪";
+        const mic = member.Active_Mic ? "🎤" : "";
+        const video = member.Active_Video ? "📷" : "";
+
+        li.innerHTML = `${online} ${name}${isAdmin ? " (admin)" : ""} ${mic} ${video}`;
+        list.appendChild(li);
+      });
+    } catch (error) {
+      console.error("Failed to fetch participants:", error);
+    }
+  }
+  
+  // ===== 13. Characters =====
+  const playerContainer = document.getElementById('player');
+  const characterId = localStorage.getItem('user_characters');
+  const types = ['Skin', 'Bottom', 'Shoes', 'Top', 'Jacket', 'Accessory', 'Hair', 'ClothesInSet'];
+  
+  let animationFrame = 0;
+  let currentDirection = 0; // 0=down, 1=up, 2=left, 3=right
+  let animationInterval;
+  
+  function updateCharacterFrame() {
+    const images = playerContainer.querySelectorAll('img.layer');
+    images.forEach(img => {
+      img.style.objectPosition = `-${32 * animationFrame}px -${32 * currentDirection}px`;
+    });
+  }
+  
+  function startWalkAnimation(direction) {
+    currentDirection = direction;
+    clearInterval(animationInterval);
+    animationFrame = 0;
+    updateCharacterFrame();
+    animationInterval = setInterval(() => {
+      animationFrame = (animationFrame + 1) % 3;
+      updateCharacterFrame();
+    }, 150);
+  }
+  
+  function stopWalkAnimation() {
+    clearInterval(animationInterval);
+    animationFrame = 1; // Idle tengah
+    updateCharacterFrame();
+  }
+  
+  async function loadPlayerCharacter() {
+    if (!characterId) return;
+    try {
+      const charRes = await fetch(`http://localhost:8000/characters/${characterId}`);
+      const character = await charRes.json();
+      for (const type of types) {
+        const idKey = `${type}_ID`;
+        const itemId = character[idKey];
+        if (!itemId) continue;
+        
+        const itemRes = await fetch(`http://localhost:8000/clothes/${type}/${itemId}`);
+        const item = await itemRes.json();
+        if (item.Image_URL) {
+          const img = document.createElement('img');
+          img.src = `http://localhost:8000/${item.Image_URL}`;
+          img.alt = item.Name;
+          img.className = `layer layer-${type.toLowerCase()}`;
+          img.style.objectPosition = `0px 0px`;
+          playerContainer.appendChild(img);
+        }
+      }
+    } catch (err) {
+      console.error("Gagal memuat karakter player:", err);
+    }
+  }
+  
+  loadPlayerCharacter();
+  
+  async function loadCharacterLayers(characterId, container) {
+    if (!characterId) return;
+    try {
+      const charRes = await fetch(`http://localhost:8000/characters/${characterId}`);
+      const character = await charRes.json();
+      
+      const types = [
+        "Skin", "Bottom", "Shoes", "Top", "Jacket",
+        "Accessory", "Hair", "ClothesInset"
+      ];
+      
+      for (const type of types) {
+        const idKey = `${type}_ID`;
+        const itemId = character[idKey];
+        if (!itemId) continue;
+        
+        const itemRes = await fetch(`http://localhost:8000/clothes/${type}/${itemId}`);
+        const item = await itemRes.json();
+        if (item.Image_URL) {
+          const img = document.createElement("img");
+          img.src = `http://localhost:8000/${item.Image_URL}`;
+          img.alt = item.Name;
+          img.className = `layer layer-${type.toLowerCase()}`;
+          img.style.objectPosition = `0px 0px`;
+          img.style.position = "absolute";
+          img.style.width = "32px";
+          img.style.height = "32px";
+          img.style.imageRendering = "pixelated";
+          img.style.objectFit = "none";
+          img.style.transition = "object-position 0.1s steps(1)";
+          
+          container.appendChild(img);
+        }
+      }
+    } catch (err) {
+      console.error(`Gagal memuat karakter player (ID: ${characterId}):`, err);
+    }
+  }
+  
+  // Untuk player utama
+  loadCharacterLayers(characterId, playerContainer);
+  
+  
+   // ===== 14. Chats =====
+  const input = document.getElementById("chat-input");
+  const messages = document.getElementById("chat-messages");
+  const settingsBtn = document.getElementById("chat-settings");
+  const dropdown = document.getElementById("chat-dropdown");
+  const modeButtons = document.querySelectorAll(".chat-mode-btn");
+  const subheader = document.getElementById("chat-subheader");
+
+  let currentMode = "Broadcast";
+
+  // Toggle dropdown menu
+  settingsBtn.addEventListener("click", () => {
+    dropdown.classList.toggle("hidden");
+  });
+
+  // Close dropdown if clicked outside
+  document.addEventListener("click", (e) => {
+    if (!settingsBtn.contains(e.target) && !dropdown.contains(e.target)) {
+      dropdown.classList.add("hidden");
+    }
+  });
+
+  // Change chat mode
+  modeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      currentMode = btn.dataset.mode;
+      subheader.textContent = currentMode;
+      dropdown.classList.add("hidden");
+    });
+  });
+
+  let chatIdBroadcast = null;
+  let chatMemberId = null;
+
+  // Tampilkan nama space
+  const space = JSON.parse(localStorage.getItem("currentSpace") || "{}");
+  document.getElementById("chat-space-name").textContent = space.name || "";
+
+  // Dapatkan Chat ID & ChatMember ID untuk broadcast
+  async function initBroadcastChat() {
+    const userId = localStorage.getItem("user_id");
+
+    try {
+      console.log("space.id:", space.id);
+
+      const resChat = await fetch(`http://localhost:8000/chats/broadcast/${space.id}`);
+      const chatData = await resChat.json();
+      console.log("chatData full:", chatData);
+
+      // Ambil Chats_ID dari elemen pertama array
+      chatIdBroadcast = chatData[0]?.Chats_ID;
+      
+      if (!chatIdBroadcast) throw new Error("Broadcast chat ID not found");
+      
+      const resMember = await fetch(`http://localhost:8000/chat_members/${chatIdBroadcast}/${userId}`);
+      const memberData = await resMember.json();
+      chatMemberId = memberData.ChatsMember_ID;
+      
+    } catch (err) {
+      console.error("Failed to fetch chat broadcast/member:", err);
+    }
+  }
+  
+  initBroadcastChat();
+  
+  // Send message
+  if (input) {
+    input.addEventListener("keydown", async function (e) {
+    if (e.key === "Enter" && input.value.trim() && currentMode === "Broadcast") {
+      const msg = input.value.trim();
+      input.value = "";
+      
+      const username = localStorage.getItem("username");
+      const profileImg = localStorage.getItem("user_image_profile");
+      
+      // Tampilkan pesan kita sendiri di kanan
+      const msgWrapper = document.createElement("div");
+      msgWrapper.className = "chat-message right";
+      
+      const userInfo = document.createElement("div");
+      userInfo.className = "chat-info";
+      
+      const img = document.createElement("img");
+      img.src = profileImg;
+      
+      const name = document.createElement("div");
+      name.className = "chat-username";
+      name.textContent = username;
+      
+      userInfo.appendChild(img);
+      userInfo.appendChild(name);
+
+      const bubble = document.createElement("div");
+      bubble.className = "chat-bubble";
+      bubble.textContent = msg;
+      
+      msgWrapper.appendChild(userInfo);
+      msgWrapper.appendChild(bubble);
+      messages.appendChild(msgWrapper);
+      messages.scrollTop = messages.scrollHeight;
+      
+      // Kirim ke server WebSocket
+      console.log("chatIdBroadcast:", chatIdBroadcast);
+      console.log("chatMemberId:", chatMemberId);
+      console.log("msg:", msg);
+      console.log("username:", username);
+      console.log("profileImg:", profileImg);
+
+      sendWebSocketRequest("send_chat_message", {
+        Chats_ID: chatIdBroadcast,
+        ChatsMember_ID: chatMemberId,
+        Message: msg,
+        Username: username,
+        Profile_Image: profileImg
+      });
+    }
+  });
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Spaces</title>
+    <link rel="stylesheet" href="css/home.css">
+    <style>
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            width: 300px;
+        }
+        .space-card {
+            background-size: cover;
+            background-position: center;
+            color: white;
+            padding: 20px;
+            margin: 20px;
+            border-radius: 12px;
+            position: relative;
+        }
+        
+        .copy-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="images/logo.jpg" alt="Logo" class="logo" onclick="window.location.href='homepage.html'">
+        <div class="header-right">
+            <button onclick="logout()">Logout</button>
+            <img id="profile-img" src="" alt="Profile" class="profile" onclick="goToProfile()">
+        </div>
+    </header>
+
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Search your spaces...">
+    </div>
+
+    <div style="text-align:center; margin-top: 20px;">
+        <button onclick="toggleOverlay('create')">Create New Space</button>
+        <button onclick="toggleOverlay('join')">Join a Space</button>
+    </div>
+
+    <main id="spaces-list"></main>
+
+    <!-- Overlay: Create Space -->
+    <div class="overlay" id="createOverlay">
+        <div class="modal">
+            <h3>Create New Space</h3>
+            <form id="createSpaceForm">
+                <input type="text" name="Name" placeholder="Space Name" required><br><br>
+                <input type="password" name="Password" placeholder="Password" required><br><br>
+                <label>Banner Image:</label>
+                <input type="file" name="Banner_Image" accept="image/*"><br><br>
+                <button type="submit">Create</button>
+                <button type="button" onclick="toggleOverlay()">Cancel</button>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- Overlay: Join Space -->
+    <div class="overlay" id="joinOverlay">
+        <div class="modal">
+            <h3>Join a Space</h3>
+            <input type="text" id="join-code" placeholder="Code"><br><br>
+            <input type="password" id="join-password" placeholder="Password"><br><br>
+            <button onclick="joinSpace()">Join</button>
+            <button type="button" onclick="toggleOverlay()">Cancel</button>
+
+        </div>
+    </div>
+
+    <script>
+        const userId = localStorage.getItem("user_id");
+        const token = localStorage.getItem("token");
+
+        if (!userId || !token) {
+            window.location.href = "signin.html";
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            fetch(`http://localhost:8000/users/${userId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(res => res.json())
+            .then(user => {
+                document.getElementById("profile-img").src = "http://localhost:8000/" + user.Profile_Image;
+            });
+
+            fetchSpaces();
+        });
+
+        function toggleOverlay(type = null) {
+            document.getElementById("createOverlay").style.display = "none";
+            document.getElementById("joinOverlay").style.display = "none";
+
+            if (type === 'create') {
+                document.getElementById("createOverlay").style.display = "flex";
+            } else if (type === 'join') {
+                document.getElementById("joinOverlay").style.display = "flex";
+            }
+        }
+
+
+        function fetchSpaces() {
+            fetch(`http://localhost:8000/spacemember/byuser/${userId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(res => res.json())
+            .then(data => {
+                const list = document.getElementById("spaces-list");
+                list.innerHTML = "";
+
+                if (!Array.isArray(data) || data.length === 0) {
+                    list.innerHTML = "<p>You haven't joined any spaces yet.</p>";
+                } else {
+                    data.forEach(item => {
+                        const space = item.space;
+                        if (!space) return;
+
+                        const div = document.createElement("div");
+                        div.className = "space-card";
+                        div.style.backgroundImage = `url(http://localhost:8000/${space.Banner_Image})`;
+
+                        div.addEventListener("click", () => enterSpace(space.Spaces_ID, space));
+
+
+                        div.innerHTML = `
+                            <button class="copy-button" onclick="event.stopPropagation(); copyToClipboard('${space.Code}')">Copy Code</button>
+                            <div class="card-top">
+                                <div class="space-number">Code: ${space.Code}</div>
+                            </div>
+                            <div class="card-bottom">
+                                <span>${space.Name}</span>
+                            </div>
+                        `;
+
+                        list.appendChild(div);
+                    });
+                }
+            })
+            .catch(err => {
+                console.error("Error fetching spaces:", err);
+                alert("Error loading your spaces.");
+            });
+        }
+
+        async function enterSpace(spaceId, space) {
+            try {
+                const res = await fetch(`http://localhost:8000/spacemember/${spaceId}/${userId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!res.ok) throw new Error("Failed to fetch space member");
+
+                const member = await res.json();
+
+                if (!member.SpacesMember_ID) {
+                    alert("Failed to find space membership.");
+                    return;
+                }
+
+                const enterRes = await fetch(`http://localhost:8000/userposition/enter/${member.SpacesMember_ID}`, {
+                    method: "POST",
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!enterRes.ok) {
+                    alert("Failed to enter room.");
+                    return;
+                }
+
+                localStorage.setItem("currentSpace", JSON.stringify({
+                    id: space.Spaces_ID,
+                    name: space.Name,
+                    code: space.Code
+                }));
+                localStorage.setItem("spaces_member_id", member.SpacesMember_ID);
+
+                window.location.href = "game.html";
+
+            } catch (err) {
+                console.error(err);
+                alert("Error entering space.");
+            }
+        }
+
+
+
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert("Code copied to clipboard!");
+            });
+        }
+
+        document.getElementById("createSpaceForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            const form = e.target;
+            const formData = new FormData(form);
+
+            fetch("http://localhost:8000/spaces", {
+                method: "POST",
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert("Space created: " + data.space.Name);
+                toggleOverlay('create');
+                fetchSpaces();
+            });
+        });
+
+        function joinSpace() {
+            const code = document.getElementById("join-code").value;
+            const password = document.getElementById("join-password").value;
+
+            fetch("http://localhost:8000/spaces/join", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({ Code: code, Password: password })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert("Joined space: " + data.space.Name);
+                toggleOverlay('join');
+                fetchSpaces();
+            })
+            .catch(() => alert("Failed to join space."));
+        }
+
+        function logout() {
+            fetch("http://localhost:8000/logout", {
+                method: "POST",
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(() => {
+                localStorage.clear();
+                window.location.href = "signin.html";
+            });
+        }
+
+        function goToProfile() {
+            window.location.href = `profile.html?id=${userId}`;
+        }
+
+        window.addEventListener("click", function(e) {
+            if (e.target.classList.contains("overlay")) {
+                toggleOverlay();
+            }
+        });
+
+    </script>
+</body>
+</html>
