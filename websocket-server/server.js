@@ -7,7 +7,6 @@ const BACKEND_BASE_URL = 'http://localhost:8000';
 const clients = new Map();
 const typingTimers = new Map();
 
-// Fungsi broadcast posisi yang sudah terbukti (tidak diubah)
 function broadcastToSameRoomClients(sourceSpacesMemberID) {
     const sourceUser = userPositions.get(sourceSpacesMemberID);
     if (!sourceUser) return;
@@ -15,6 +14,7 @@ function broadcastToSameRoomClients(sourceSpacesMemberID) {
     const usersInSameRoom = [];
     for (const user of userPositions.values()) {
         if (user.RoomID === sourceUser.RoomID) {
+            // Sertakan data yang lebih kaya di sini
             usersInSameRoom.push({
                 id: user.SpacesMember_ID,
                 Username: user.Username,
@@ -22,7 +22,11 @@ function broadcastToSameRoomClients(sourceSpacesMemberID) {
                 PosY: user.PosY,
                 FacingDirection: user.FacingDirection,
                 ChatArea_ID: user.ChatArea_ID || null,
-                Character_ID: user.Character_ID
+                Character_ID: user.Character_ID,
+                // --- TAMBAHAN DATA BARU ---
+                Active_Mic: user.Active_Mic,
+                Active_Video: user.Active_Video,
+                Role: user.Role || "Member" // Default role
             });
         }
     }
@@ -94,7 +98,9 @@ wss.on('connection', function connection(ws) {
                         PosY: payload.PosY || 0,
                         FacingDirection: payload.FacingDirection || 'down',
                         ChatArea_ID: null,
-                        ActiveChatsID: null
+                        ActiveChatsID: null,
+                        Active_Mic: false,
+                        Active_Video: false
                     });
                     console.log(`[WebSocket] Registered user ${memberId}`);
                     broadcastToSameRoomClients(memberId);
@@ -216,6 +222,26 @@ wss.on('connection', function connection(ws) {
                     user.ChatArea_ID = null;
                     broadcastToSameRoomClients(memberId);
                     break;
+
+                case 'update_status': {
+                    if (!payload.updateData) break;
+
+                    try {
+                        // 1. Simpan perubahan ke database melalui API (seperti permintaanmu)
+                        await axios.put(`${BACKEND_BASE_URL}/spacemember/status/${memberId}`, payload.updateData);
+                        
+                        // 2. Jika berhasil, perbarui ingatan di server
+                        Object.assign(user, payload.updateData);
+                        console.log(`[WebSocket] Status updated for ${user.Username}:`, payload.updateData);
+
+                        // 3. Siarkan perubahan ke semua orang di ruangan
+                        broadcastToSameRoomClients(memberId);
+
+                    } catch (err) {
+                        console.error(`[API Error] Failed to update status for ${memberId}:`, err.message);
+                    }
+                    break;
+                }
                 
                 default:
                     console.log(`Received unhandled message type: ${type}`);

@@ -261,6 +261,7 @@
               }
             }
           });
+          renderParticipantsList(data.data);
         }
       };
 
@@ -1074,60 +1075,40 @@
       }
     });
     
-    async function updateMemberStatus(statusUpdate) {
-      if (!spacesMemberId) {
-        console.warn("SpacesMember_ID tidak ditemukan.");
-        return;
-      }
-      
-      try {
-        const response = await fetch(`http://localhost:8000/spacemember/status/${spacesMemberId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(statusUpdate),
-        });
-        
-        if (!response.ok) {
-          throw new Error("Gagal update status.");
-        }
-        
-        const result = await response.json();
-        console.log("Status diperbarui:", result.member);
-      } catch (error) {
-        console.error("Error saat update status:", error.message);
-      }
+  async function updateMemberStatus(statusUpdate) {
+    if (!spacesMemberId) {
+      console.warn("SpacesMember_ID tidak ditemukan.");
+      return;
     }
     
-    // ===== 12. Participant =====
-    setInterval(fetchAndRenderParticipants, 1000); // update setiap 3 detik
-    fetchAndRenderParticipants(); // panggil langsung saat awal
-    async function fetchAndRenderParticipants() {
-    const spaceId = JSON.parse(localStorage.getItem("currentSpace"))?.id;
-    if (!spaceId) return;
-
-    try {
-      const response = await fetch(`http://localhost:8000/spacemember/${spaceId}`);
-      const data = await response.json();
-      
+    // Kirim sinyal ke server WebSocket untuk update status
+    sendWebSocketRequest('update_status', {
+      updateData: statusUpdate
+    });
+  }
+    
+  // ===== 12. Participant =====
+  function renderParticipantsList(participantsData) {
       const list = document.getElementById("participants-list");
-      list.innerHTML = ""; // kosongkan daftar
-      
-      data.forEach(member => {
-        const li = document.createElement("li");
-        const name = member.user?.Username || "Unknown";
-        const isAdmin = member.Role === "Admin";
-        const online = member.Online ? "🟢" : "⚪";
-        const mic = member.Active_Mic ? "🎤" : "";
-        const video = member.Active_Video ? "📷" : "";
+      if (!list) return; // Pengaman jika panel tidak ada
 
-        li.innerHTML = `${online} ${name}${isAdmin ? " (admin)" : ""} ${mic} ${video}`;
-        list.appendChild(li);
+      list.innerHTML = ""; // Kosongkan daftar sebelum melukis ulang
+
+      participantsData.forEach(member => {
+          const li = document.createElement("li");
+
+          // Kita ambil data langsung dari payload broadcast
+          const name = member.Username || "Unknown";
+          const isAdmin = member.Role === "Admin"; // Role perlu ditambahkan di server nanti
+          const mic = member.Active_Mic ? "🎤" : "";
+          const video = member.Active_Video ? "📷" : "";
+
+          // Kita tentukan status online berdasarkan keberadaannya di daftar
+          const online = "🟢"; 
+
+          li.innerHTML = `${online} ${name}${isAdmin ? " (admin)" : ""} ${mic} ${video}`;
+          list.appendChild(li);
       });
-    } catch (error) {
-      console.error("Failed to fetch participants:", error);
-    }
   }
   
   // ===== 13. Characters =====
