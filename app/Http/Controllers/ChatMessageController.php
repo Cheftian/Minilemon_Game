@@ -11,7 +11,6 @@ use Carbon\Carbon;
 class ChatMessageController extends Controller
 {
     // Menyimpan pesan ke chat
-
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -38,7 +37,10 @@ class ChatMessageController extends Controller
     // Mengambil semua pesan dalam satu chat
     public function getByChat($chatId)
     {
-        $messages = ChatMessage::with('user')
+        // --- INILAH PERBAIKANNYA ---
+        // Kita beritahu server untuk mengambil rantai data yang benar:
+        // dari Pesan -> ke Anggota Chat -> lalu ke User
+        $messages = ChatMessage::with('chat_member.user') 
                     ->where('Chats_ID', $chatId)
                     ->orderBy('Time', 'asc')
                     ->get();

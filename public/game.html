@@ -47,6 +47,8 @@
 
         
         <div id="chat-messages">
+          </div>
+        <div id="typing-indicator-container" class="typing-indicator-container">
           <div id="typing-indicator" class="typing-indicator"></div>
         </div>
         
@@ -222,40 +224,16 @@
           const { Message, Username, Profile_Image } = data.data;
           const currentUser = localStorage.getItem("username");
 
-          // --- TAMBAHKAN KONDISI AJAIB INI ---
-          // Hanya tampilkan bubble jika pengirimnya BUKAN diri kita sendiri
           if (Username !== currentUser) {
-            const msgWrapper = document.createElement("div");
-            msgWrapper.className = "chat-message";
-            msgWrapper.style.display = "flex";
-            msgWrapper.style.flexDirection = "column";
-            msgWrapper.style.alignItems = "flex-start"; // Pasti dari orang lain
-
-            const userInfo = document.createElement("div");
-            userInfo.className = "chat-info";
-
-            const img = document.createElement("img");
-            img.src = Profile_Image || "https://via.placeholder.com/30";
-
-            const name = document.createElement("div");
-            name.className = "chat-username";
-            name.textContent = Username;
-
-            userInfo.appendChild(img);
-            userInfo.appendChild(name);
-
-            const bubble = document.createElement("div");
-            bubble.className = "chat-bubble";
-            bubble.textContent = Message;
-
-            msgWrapper.appendChild(userInfo);
-            msgWrapper.appendChild(bubble);
-
-            messages.appendChild(msgWrapper);
+            // Cukup panggil sang pelukis!
+            renderChatMessage({
+                Message, Username, Profile_Image,
+                created_at: new Date().toISOString() // Gunakan waktu sekarang untuk pesan realtime
+            });
             messages.scrollTop = messages.scrollHeight;
           }
         }
-
+        
         if (data.type === "same_room_result" && data.data) {
           data.data.forEach(player => {
             const playerId = String(player.id);
@@ -1266,6 +1244,92 @@
 
   let currentMode = "Broadcast";
 
+  async function loadChatHistory(chatId) {
+      if (!chatId) return;
+
+      try {
+          const response = await fetch(`http://localhost:8000/chat_messages/chat/${chatId}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (!response.ok) throw new Error("Failed to fetch chat history");
+
+          const history = await response.json();
+          const messages = document.getElementById("chat-messages");
+          messages.innerHTML = '';
+
+          // Tampilkan setiap pesan dari riwayat
+          history.forEach(message => {
+              // --- INI PENJAGA BARUNYA ---
+              // Hanya render pesan jika data pengirimnya lengkap
+              if (message.chat_member && message.chat_member.user) {
+                  renderChatMessage({
+                      Message: message.Message,
+                      Username: message.chat_member.user.Username,
+                      Profile_Image: `http://localhost:8000/${message.chat_member.user.Profile_Image}`,
+                      created_at: message.created_at
+                  });
+              } else {
+                  // Beri catatan di konsol jika ada data yang tidak lengkap
+                  console.warn("Melewatkan 1 pesan dari riwayat karena data pengirim tidak lengkap:", message);
+              }
+          });
+
+          messages.scrollTop = messages.scrollHeight;
+
+      } catch (err) {
+          console.error("Error loading chat history:", err);
+      }
+  }
+
+  function renderChatMessage(messageData) {
+      // Periksa apakah data dasar ada, jika tidak, jangan render apapun.
+      if (!messageData || !messageData.Message || !messageData.Username) {
+          console.warn("Mencoba merender pesan dengan data tidak lengkap:", messageData);
+          return; 
+      }
+
+      const { Message, Username, Profile_Image, created_at } = messageData;
+      const currentUser = localStorage.getItem("username");
+      const isSelf = Username === currentUser;
+
+      const msgWrapper = document.createElement("div");
+      // Gunakan class 'right' untuk pesan sendiri agar CSS bisa menatanya
+      msgWrapper.className = `chat-message ${isSelf ? 'right' : 'left'}`;
+
+      const userInfo = document.createElement("div");
+      userInfo.className = "chat-info";
+      
+      const img = document.createElement("img");
+      const selfImage = document.getElementById("footer-profile-img").src;
+      img.src = isSelf ? selfImage : (Profile_Image || "https://via.placeholder.com/30");
+      
+      const name = document.createElement("div");
+      name.className = "chat-username";
+      name.textContent = Username;
+
+      userInfo.appendChild(img);
+      userInfo.appendChild(name);
+
+      const bubble = document.createElement("div");
+      bubble.className = "chat-bubble";
+      bubble.textContent = Message;
+
+      const timestamp = document.createElement("div");
+      timestamp.className = "chat-timestamp";
+      if (created_at) {
+          const date = new Date(created_at);
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+          timestamp.textContent = `${hours}:${minutes}`;
+      }
+
+      msgWrapper.appendChild(userInfo);
+      msgWrapper.appendChild(bubble);
+      msgWrapper.appendChild(timestamp);
+
+      messages.appendChild(msgWrapper);
+  }
+
   // Variabel untuk mengatur jeda pengiriman sinyal 'mengetik'
   let typingCooldown;
   const TYPING_TIMER_LENGTH = 1500; // 1.5 detik
@@ -1336,6 +1400,9 @@
       chatMemberId = memberData.ChatsMember_ID;
       sendWebSocketRequest("join_chat", { Chats_ID: chatIdBroadcast });
 
+      // --- PANGGIL FUNGSI UNTUK MEMUAT RIWAYAT CHAT ---
+      await loadChatHistory(chatIdBroadcast);
+
     } catch (err) {
       console.error("Failed to fetch chat broadcast/member:", err);
     }
@@ -1344,59 +1411,36 @@
   initBroadcastChat();
   
   // Send message
+// File: game.html (di dalam tag <script>)
+
   if (input) {
     input.addEventListener("keydown", async function (e) {
-    if (e.key === "Enter" && input.value.trim() && currentMode === "Broadcast") {
-      const msg = input.value.trim();
-      input.value = "";
-      
-      const username = localStorage.getItem("username");
-      const profileImg = localStorage.getItem("user_image_profile");
-      
-      // Tampilkan pesan kita sendiri di kanan
-      const msgWrapper = document.createElement("div");
-      msgWrapper.className = "chat-message right";
-      
-      const userInfo = document.createElement("div");
-      userInfo.className = "chat-info";
-      
-      const img = document.createElement("img");
-      img.src = profileImg;
-      
-      const name = document.createElement("div");
-      name.className = "chat-username";
-      name.textContent = username;
-      
-      userInfo.appendChild(img);
-      userInfo.appendChild(name);
+      if (e.key === "Enter" && input.value.trim() && currentMode === "Broadcast") {
+        const msg = input.value.trim();
+        input.value = "";
+        
+        const username = localStorage.getItem("username");
+        const profileImg = document.getElementById("footer-profile-img").src;
 
-      const bubble = document.createElement("div");
-      bubble.className = "chat-bubble";
-      bubble.textContent = msg;
-      
-      msgWrapper.appendChild(userInfo);
-      msgWrapper.appendChild(bubble);
-      messages.appendChild(msgWrapper);
-      messages.scrollTop = messages.scrollHeight;
-      
-      // Kirim ke server WebSocket
-      console.log("chatIdBroadcast:", chatIdBroadcast);
-      console.log("chatMemberId:", chatMemberId);
-      console.log("msg:", msg);
-      console.log("username:", username);
-      console.log("profileImg:", profileImg);
-
-      sendWebSocketRequest("send_chat_message", {
-        SpacesMember_ID: spacesMemberId,
-        Chats_ID: chatIdBroadcast,
-        ChatsMember_ID: chatMemberId,
-        Message: msg,
-        Username: username,
-        Profile_Image: profileImg
-      });
-    }
-  });
-}
+        // Tampilkan pesan kita sendiri menggunakan sang pelukis
+        renderChatMessage({
+            Message: msg, Username: username, Profile_Image: profileImg,
+            created_at: new Date().toISOString()
+        });
+        messages.scrollTop = messages.scrollHeight;
+        
+        // Kirim ke server WebSocket
+        sendWebSocketRequest("send_chat_message", {
+          SpacesMember_ID: spacesMemberId,
+          Chats_ID: chatIdBroadcast,
+          ChatsMember_ID: chatMemberId,
+          Message: msg,
+          Username: username,
+          Profile_Image: profileImg
+        });
+      }
+    });
+  }
 
 </script>
 </body>

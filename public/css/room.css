@@ -254,15 +254,91 @@ footer {
 }
 
 
+/* GANTI SEMUA CSS LAMA DARI #chat-messages SAMPAI AKHIR DENGAN INI */
+
+/* Wadah utama untuk semua pesan */
 #chat-messages {
-  height: 480px;
+  display: flex;
+  flex-direction: column; /* Pesan akan tersusun dari atas ke bawah */
+  padding: 10px;
   overflow-y: auto;
+  flex-grow: 1;
   border: 2px solid #f6c600;
   border-radius: 5px;
-  margin-bottom: 10px;
-  margin-top: 10px;
-  padding: 10px;
   background: #f9f9f9;
+  height: 480px; /* Pastikan tinggi sesuai kebutuhan */
+}
+
+/* Penampung untuk setiap bubble chat */
+.chat-message {
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+  margin-bottom: 15px;
+}
+
+/* --- KUNCI UNTUK CHAT ORANG LAIN (KIRI) --- */
+.chat-message.left {
+  align-self: flex-start; /* WAJIB: Paksa bubble ke tepi kiri */
+  align-items: flex-start;
+}
+.chat-message.left .chat-info {
+  flex-direction: row; /* Gambar di kiri, nama di kanan */
+}
+.chat-message.left .chat-bubble {
+  background-color: #f1f0f0; /* Warna bubble abu-abu untuk orang lain */
+  color: #333;
+}
+
+/* --- KUNCI UNTUK CHAT DIRI SENDIRI (KANAN) --- */
+.chat-message.right {
+  align-self: flex-end; /* WAJIB: Paksa bubble ke tepi kanan */
+  align-items: flex-end;
+}
+.chat-message.right .chat-info {
+  flex-direction: row-reverse; /* Nama di kiri, gambar di kanan */
+}
+.chat-message.right .chat-username {
+  margin-left: 0;
+  margin-right: 8px;
+}
+.chat-message.right .chat-bubble {
+  background-color: #dcf8c6; /* Warna bubble hijau untuk diri sendiri */
+  color: #333;
+}
+
+/* --- DETAIL-DETAIL KECIL YANG MEMPERCANTIK --- */
+.chat-info {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.chat-info img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  margin: 0 8px;
+}
+
+.chat-username {
+  font-size: 0.8em;
+  color: #555;
+  font-weight: bold;
+}
+
+.chat-bubble {
+  padding: 8px 12px;
+  border-radius: 18px;
+  max-width: 100%;
+  word-wrap: break-word; /* Agar teks panjang turun ke bawah */
+  box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+}
+
+.chat-timestamp {
+  font-size: 0.7em;
+  color: #999;
+  margin-top: 4px;
 }
 
 .chat-input-container {
@@ -323,67 +399,26 @@ footer {
   display: none;
 }
 
-
-/* Chat */
-.chat-message {
+.typing-indicator-container {
+  height: 20px; /* Beri sedikit ruang di bawah panel chat */
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  margin-bottom: 10px;
-}
-
-.chat-info {
-  display: flex;
+  justify-content: center; /* Posisikan di tengah secara horizontal */
   align-items: center;
-  gap: 5px;
 }
 
-.chat-info img {
-  width: 20px;  
-  height: 20px;
-  border-radius: 50%;
+/* Tampilan dari indikator itu sendiri */
+.typing-indicator {
+  color: #888;
+  font-size: 0.8em;
+  font-style: italic;
+  transition: opacity 0.3s ease;
+  opacity: 0; /* Sembunyikan secara default */
 }
 
-.chat-username {
-  font-weight: 500;
-  font-size: 11px; 
-  color: #444;
+/* Tampilkan indikator jika ada teks di dalamnya */
+.typing-indicator:not(:empty) {
+  opacity: 1;
 }
-
-
-.chat-bubble {
-  background-color: #dcf8c6;
-  padding: 8px 12px;
-  border-radius: 10px;
-  margin-top: 4px;
-  max-width: 60%;
-  word-wrap: break-word;
-}
-
-#chat-settings {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  position: relative;
-  z-index: 2;
-}
-.chat-message.left {
-  text-align: left;
-  justify-content: flex-start;
-}
-
-.chat-message.right {
-  text-align: right;
-  justify-content: flex-end;
-}
-
-.chat-message {
-  display: flex;
-  flex-direction: column;
-  margin: 5px 0;
-}
-
 
 .dropdown {
   position: absolute;
