@@ -45,7 +45,10 @@
         <h3 class="chat-header">Chat</h3>
         <div id="chat-subheader" class="chat-subheader">Broadcast - <span id="chat-space-name"></span></div>
 
-        <div id="chat-messages"></div>
+        
+        <div id="chat-messages">
+          <div id="typing-indicator" class="typing-indicator"></div>
+        </div>
         
         <div class="chat-input-container">
           <input type="text" id="chat-input" placeholder="Type a message..." />
@@ -200,39 +203,57 @@
         const data = JSON.parse(event.data);
         console.log("[WebSocket] Received:", data);
 
+        const typingIndicator = document.getElementById('typing-indicator');
+
+        // --- TANGANI SINYAL 'USER_IS_TYPING' ---
+        if (data.type === "user_is_typing") {
+            typingIndicator.textContent = `${data.data.Username} sedang mengetik...`;
+        }
+        
+        // --- TANGANI SINYAL 'USER_STOPPED_TYPING' ---
+        if (data.type === "user_stopped_typing") {
+            // Hanya hapus teks jika yang berhenti adalah yang sedang ditampilkan
+            if (typingIndicator.textContent.includes(data.data.Username)) {
+                typingIndicator.textContent = "";
+            }
+        }
 
         if (data.type === "chat_message") {
           const { Message, Username, Profile_Image } = data.data;
           const currentUser = localStorage.getItem("username");
 
-          const msgWrapper = document.createElement("div");
-          msgWrapper.className = "chat-message";
-          msgWrapper.style.display = "flex";
-          msgWrapper.style.flexDirection = "column";
-          msgWrapper.style.alignItems = Username === currentUser ? "flex-end" : "flex-start";
+          // --- TAMBAHKAN KONDISI AJAIB INI ---
+          // Hanya tampilkan bubble jika pengirimnya BUKAN diri kita sendiri
+          if (Username !== currentUser) {
+            const msgWrapper = document.createElement("div");
+            msgWrapper.className = "chat-message";
+            msgWrapper.style.display = "flex";
+            msgWrapper.style.flexDirection = "column";
+            msgWrapper.style.alignItems = "flex-start"; // Pasti dari orang lain
 
-          const userInfo = document.createElement("div");
-          userInfo.className = "chat-info";
+            const userInfo = document.createElement("div");
+            userInfo.className = "chat-info";
 
-          const img = document.createElement("img");
-          img.src = Profile_Image || "https://via.placeholder.com/30";
+            const img = document.createElement("img");
+            img.src = Profile_Image || "https://via.placeholder.com/30";
 
-          const name = document.createElement("div");
-          name.className = "chat-username";
-          name.textContent = Username;
+            const name = document.createElement("div");
+            name.className = "chat-username";
+            name.textContent = Username;
 
-          userInfo.appendChild(img);
-          userInfo.appendChild(name);
+            userInfo.appendChild(img);
+            userInfo.appendChild(name);
 
-          const bubble = document.createElement("div");
-          bubble.className = "chat-bubble";
-          bubble.textContent = Message;
+            const bubble = document.createElement("div");
+            bubble.className = "chat-bubble";
+            bubble.textContent = Message;
 
-          msgWrapper.appendChild(userInfo);
-          msgWrapper.appendChild(bubble);
+            msgWrapper.appendChild(userInfo);
+            msgWrapper.appendChild(bubble);
 
-          messages.appendChild(msgWrapper);
-          messages.scrollTop = messages.scrollHeight;
+            messages.appendChild(msgWrapper);
+            messages.scrollTop = messages.scrollHeight;
+          }
         }
 
         if (data.type === "same_room_result" && data.data) {
@@ -966,9 +987,9 @@
         return;
       }
 
-      input.addEventListener("keydown", (e) => {
-        console.log("[DEBUG] Key pressed:", e.key);
-      });
+      // input.addEventListener("keydown", (e) => {
+      //   // console.log("[DEBUG] Key pressed:", e.key);
+      // });
 
 
     });
@@ -1245,6 +1266,27 @@
 
   let currentMode = "Broadcast";
 
+  // Variabel untuk mengatur jeda pengiriman sinyal 'mengetik'
+  let typingCooldown;
+  const TYPING_TIMER_LENGTH = 1500; // 1.5 detik
+
+  const chatInput = document.getElementById("chat-input");
+
+  // Saat pengguna mulai mengetik di input chat
+  chatInput.addEventListener('input', () => {
+    // Jika dalam masa jeda, jangan lakukan apa-apa
+    if (typingCooldown) return;
+
+    // Kirim sinyal 'start_typing' ke server
+    sendWebSocketRequest("start_typing", {});
+    
+    // Mulai masa jeda
+    typingCooldown = true;
+    setTimeout(() => {
+      typingCooldown = false;
+    }, TYPING_TIMER_LENGTH);
+  });
+  
   // Toggle dropdown menu
   settingsBtn.addEventListener("click", () => {
     dropdown.classList.toggle("hidden");
@@ -1292,7 +1334,8 @@
       const resMember = await fetch(`http://localhost:8000/chat_members/${chatIdBroadcast}/${userId}`);
       const memberData = await resMember.json();
       chatMemberId = memberData.ChatsMember_ID;
-      
+      sendWebSocketRequest("join_chat", { Chats_ID: chatIdBroadcast });
+
     } catch (err) {
       console.error("Failed to fetch chat broadcast/member:", err);
     }
@@ -1344,6 +1387,7 @@
       console.log("profileImg:", profileImg);
 
       sendWebSocketRequest("send_chat_message", {
+        SpacesMember_ID: spacesMemberId,
         Chats_ID: chatIdBroadcast,
         ChatsMember_ID: chatMemberId,
         Message: msg,
