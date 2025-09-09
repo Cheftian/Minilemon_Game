@@ -765,14 +765,8 @@
     // ===== 6. Area Check =====
     async function checkAreas(x, y, areas, label) {
       let foundArea = null;
-
       for (const area of areas) {
-        if (
-          x < area.x + area.width &&
-          x + 32 > area.x &&
-          y < area.y + area.height &&
-          y + 32 > area.y
-        ) {
+        if (x < area.x + area.width && x + 32 > area.x && y < area.y + area.height && y + 32 > area.y) {
           foundArea = area;
           break;
         }
@@ -785,43 +779,79 @@
         }
 
         try {
-          const response = await fetch(`http://localhost:8000/chat_areas/object/${foundArea.id}`);
-          const data = await response.json();
-          const chatAreaId = data.ChatArea_ID;
+          const areaDataResponse = await fetch(`http://localhost:8000/chat_areas/object/${foundArea.id}`);
+          const areaData = await areaDataResponse.json();
+          const chatAreaIdFromServer = areaData.ChatArea_ID;
 
-          if (chatAreaId) {
-            sendWebSocketRequest('enterchat', {
-              SpacesMember_ID: spacesMemberId,
-              ChatArea_ID: chatAreaId
-            });
-
-            console.log(`Entered ${label} (ChatArea_ID: ${chatAreaId})`);
-            activeChatAreaId = chatAreaId;
+          if (chatAreaIdFromServer) {
+            activeChatAreaId = chatAreaIdFromServer;
             currentAreaObjectId = foundArea.id;
             isInArea = true;
-            togglePanel("chat");
+
+            await fetch(`http://localhost:8000/userposition/${spacesMemberId}/enterchat/${activeChatAreaId}`, {
+                method: "PUT",
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            console.log(`[API] Entered chat area: ${activeChatAreaId}`);
+
+            const chatResponse = await fetch(`http://localhost:8000/chats/chatarea/${activeChatAreaId}`);
+            const chatData = await chatResponse.json();
+            
+            if (chatData && chatData.length > 0) {
+              areaChatId = chatData[0].Chats_ID; 
+
+              const memberRes = await fetch(`http://localhost:8000/chat_members/${areaChatId}/${userId}`);
+              const memberData = await memberRes.json();
+              areaChatMemberId = memberData.ChatsMember_ID;
+            
+              // --- SINYAL TELEPATI BARU ---
+              // Beri tahu server WebSocket bahwa kita sekarang mendengarkan di saluran Area
+              sendWebSocketRequest("join_chat", { Chats_ID: areaChatId });
+            
+              if (currentMode === "Area") {
+                input.disabled = false;
+                subheader.textContent = `Mode - Area (${activeChatAreaId})`;
+                await loadChatHistory(areaChatId);
+              }
+            }
           }
         } catch (err) {
-          console.error(`Failed to enter ${label}:`, err);
+          console.error(`Gagal memproses ${label}:`, err);
         }
 
-      } else if (!foundArea && activeChatAreaId && isInArea) {
-        // Hanya keluar satu kali jika sebelumnya berada dalam area
+      } else if (!foundArea && isInArea) {
         await leaveChatArea();
         isInArea = false;
       }
     }
 
     async function leaveChatArea() {
-      sendWebSocketRequest('leavechat', {
-        SpacesMember_ID: spacesMemberId
-      });
+      if (!activeChatAreaId) return;
 
-      console.log(`Left chat area (ChatArea_ID: ${activeChatAreaId})`);
-      togglePanel("chat"); // tutup panel
+      try {
+        await fetch(`http://localhost:8000/userposition/${spacesMemberId}/leavechat`, {
+            method: "PUT",
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        console.log(`[API] Left chat area: ${activeChatAreaId}`);
+        
+        // --- SINYAL TELEPATI BARU ---
+        // Beri tahu server WebSocket bahwa kita kembali ke saluran Broadcast
+        sendWebSocketRequest("join_chat", { Chats_ID: chatIdBroadcast });
+        
+        activeChatAreaId = null;
+        currentAreaObjectId = null;
+        areaChatId = null;
+        areaChatMemberId = null;
 
-      activeChatAreaId = null;
-      currentAreaObjectId = null;
+        if (currentMode === "Area") {
+          subheader.textContent = `Mode - Area`;
+          displayAreaPlaceholder();
+        }
+
+      } catch (err) {
+        console.error("Gagal saat keluar dari chat area:", err);
+      }
     }
 
     async function checkRoomTrigger(x, y) {
@@ -1224,6 +1254,16 @@
   const subheader = document.getElementById("chat-subheader");
 
   let currentMode = "Broadcast";
+  let chatIdBroadcast = null; // ID untuk chat broadcast
+  let chatMemberId = null;  // ID member untuk chat broadcast
+  let areaChatId = null;      // Variabel baru untuk menyimpan ID chat area
+  let areaChatMemberId = null; // Variabel baru untuk ID member chat area
+
+  // Fungsi untuk menampilkan pesan "Masuk ke area..."
+  function displayAreaPlaceholder() {
+    messages.innerHTML = `<div class="chat-placeholder">Masuk ke area obrolan untuk memulai obrolan kelompok.</div>`;
+    input.disabled = true; // Nonaktifkan input chat
+  }
 
   async function loadChatHistory(chatId) {
       if (!chatId) return;
@@ -1337,29 +1377,43 @@
     dropdown.classList.toggle("hidden");
   });
 
-  // Close dropdown if clicked outside
+  // Tutup dropdown jika klik di luar
   document.addEventListener("click", (e) => {
     if (!settingsBtn.contains(e.target) && !dropdown.contains(e.target)) {
       dropdown.classList.add("hidden");
     }
   });
 
-  // Change chat mode
+  // Logika saat mengganti mode chat
   modeButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
       currentMode = btn.dataset.mode;
-      subheader.textContent = currentMode;
       dropdown.classList.add("hidden");
+      input.disabled = false;
+
+      if (currentMode === "Broadcast") {
+        subheader.textContent = `Mode - Broadcast - ${space.name}`;
+        // Pastikan server tahu kita di saluran Broadcast
+        sendWebSocketRequest("join_chat", { Chats_ID: chatIdBroadcast });
+        loadChatHistory(chatIdBroadcast);
+      } else if (currentMode === "Area") {
+        if (activeChatAreaId && areaChatId) {
+          subheader.textContent = `Mode - Area (${activeChatAreaId})`;
+          // Pastikan server tahu kita di saluran Area
+          sendWebSocketRequest("join_chat", { Chats_ID: areaChatId });
+          loadChatHistory(areaChatId);
+        } else {
+          subheader.textContent = `Mode - Area`;
+          displayAreaPlaceholder();
+        }
+      }
     });
   });
-
-  let chatIdBroadcast = null;
-  let chatMemberId = null;
 
   // Tampilkan nama space
   const space = JSON.parse(localStorage.getItem("currentSpace") || "{}");
   document.getElementById("chat-space-name").textContent = space.name || "";
-
+  
   // Dapatkan Chat ID & ChatMember ID untuk broadcast
   async function initBroadcastChat() {
     const userId = localStorage.getItem("user_id");
@@ -1391,34 +1445,44 @@
   
   initBroadcastChat();
   
-  // Send message
-// File: game.html (di dalam tag <script>)
-
   if (input) {
     input.addEventListener("keydown", async function (e) {
-      if (e.key === "Enter" && input.value.trim() && currentMode === "Broadcast") {
+      if (e.key === "Enter" && input.value.trim()) {
         const msg = input.value.trim();
         input.value = "";
         
         const username = localStorage.getItem("username");
         const profileImg = document.getElementById("footer-profile-img").src;
 
-        // Tampilkan pesan kita sendiri menggunakan sang pelukis
+        // Tampilkan pesan sendiri secara optimis
         renderChatMessage({
             Message: msg, Username: username, Profile_Image: profileImg,
             created_at: new Date().toISOString()
         });
         messages.scrollTop = messages.scrollHeight;
         
-        // Kirim ke server WebSocket
-        sendWebSocketRequest("send_chat_message", {
-          SpacesMember_ID: spacesMemberId,
-          Chats_ID: chatIdBroadcast,
-          ChatsMember_ID: chatMemberId,
-          Message: msg,
-          Username: username,
-          Profile_Image: profileImg
-        });
+        let targetChatId = null;
+        let targetChatMemberId = null;
+
+        if (currentMode === "Broadcast") {
+            targetChatId = chatIdBroadcast;
+            targetChatMemberId = chatMemberId;
+        } else if (currentMode === "Area" && areaChatId) {
+            targetChatId = areaChatId;
+            targetChatMemberId = areaChatMemberId; // Kita perlu mengambil ID member area
+        }
+        
+        if (targetChatId && targetChatMemberId) {
+            // Kirim ke server WebSocket
+            sendWebSocketRequest("send_chat_message", {
+              SpacesMember_ID: spacesMemberId,
+              Chats_ID: targetChatId,
+              ChatsMember_ID: targetChatMemberId,
+              Message: msg,
+              Username: username,
+              Profile_Image: profileImg
+            });
+        }
       }
     });
   }

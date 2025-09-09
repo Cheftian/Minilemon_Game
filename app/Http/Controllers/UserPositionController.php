@@ -286,15 +286,17 @@ class UserPositionController extends Controller
             return response()->json(['message' => 'SpacesMember not found.'], 404);
         }
 
-        // Hapus user dari semua chat yang terkait ChatArea_ID ini
-        $chats = Chat::where('ChatArea_ID', $position->ChatArea_ID)->get();
+        // --- HAPUS ATAU KOMENTARI BLOK INI ---
+        // Dengan tidak menghapus keanggotaan, riwayat chat akan tetap terhubung
+        /* $chats = Chat::where('ChatArea_ID', $position->ChatArea_ID)->get();
         foreach ($chats as $chat) {
             ChatsMember::where('Chats_ID', $chat->Chats_ID)
                     ->where('User_ID', $member->User_ID)
                     ->delete();
         }
+        */
 
-        // Kosongkan ChatArea_ID dari posisi user
+        // Kosongkan ChatArea_ID dari posisi user (ini sudah benar)
         $position->ChatArea_ID = null;
         $position->LastUpdated = Carbon::now();
         $position->save();
