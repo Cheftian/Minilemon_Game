@@ -26,4 +26,8 @@ class Chat extends Model
     {
         return $this->belongsTo(ChatArea::class, 'ChatArea_ID');
     }
+    public function members()
+    {
+        return $this->hasMany(ChatsMember::class, 'Chats_ID', 'Chats_ID');
+    }
 }

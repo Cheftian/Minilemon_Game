@@ -119,6 +119,7 @@ $router->group(['prefix' => 'chats'], function () use ($router) {
     $router->put('/{id}/temporary', 'ChatController@setTemporaryFalse');
     $router->get('/broadcast/{spaceId}', 'ChatController@getBroadcastBySpaces');
     $router->get('/chatarea/{chatAreaId}', 'ChatController@getByChatArea');
+    $router->get('/personal/{userId1}/{userId2}', 'ChatController@findPersonalChat');
 });
 
 // Chats Member routes

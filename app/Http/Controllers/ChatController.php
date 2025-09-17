@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Chat;
 use Illuminate\Http\Request;
+use App\Models\ChatsMember;
 
 class ChatController extends Controller
 {
@@ -68,6 +69,26 @@ class ChatController extends Controller
         $chats = Chat::where('ChatArea_ID', $chatAreaId)->get();
 
         return response()->json($chats);
+    }
+
+    public function findPersonalChat($userId1, $userId2)
+    {
+        $chat = Chat::where('Chat_Type', 'Personal')
+                    ->whereHas('members', function ($query) use ($userId1) {
+                        $query->where('User_ID', $userId1);
+                    })
+                    ->whereHas('members', function ($query) use ($userId2) {
+                        $query->where('User_ID', $userId2);
+                    })
+                    ->withCount('members')
+                    ->having('members_count', 2)
+                    ->first();
+
+        if (!$chat) {
+            return response()->json(['message' => 'Personal chat not found'], 404);
+        }
+
+        return response()->json($chat);
     }
 
 }
