@@ -1,10 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;700&display=swap');
+
+* {
+    font-family: 'Pixelify Sans', sans-serif;
+}
+
 body {
-    font-family: Arial, sans-serif;
     background-color: #FFDD00;
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    height: 96vh;
 }
 
 .auth-container {
@@ -57,6 +62,9 @@ body {
 
 .auth-container button:hover {
     background-color: #711abc;
+    transform: scale(1.03);
+    box-shadow: 0 0 15px #FFDD00, 0 0 5px #FFDD00;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .auth-container .link {
@@ -68,3 +76,10 @@ body {
     color: #4285f4;
     text-decoration: none;
 }
+
+.error-message {
+    color: red;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    text-align: center;
+} 

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sign In</title>
+    <title>MLS Pixel V2 - Sign In</title>
     <link rel="stylesheet" href="css/signin.css">
 </head>
 <body>
@@ -11,6 +11,7 @@
          <img src="images/logo.png" alt="logo">
        </div>
         <h2>Welcome To MLS!</h2>
+        <div id="error-message" class="error-message"></div>
         <h3>Email</h3>
         <input type="email" id="email" placeholder="example@gmail.com" required>
         <h3>Password</h3>
@@ -19,7 +20,6 @@
         <div class="link">
             Don't have an account? <a href="signup.html">Sign up</a>
         </div>
-        <div id="error-message" class="error-message"></div>
     </div>
 
 <script>
@@ -51,10 +51,6 @@
             localStorage.setItem('email', data.user.Email);
             localStorage.setItem('token', data.token); // JWT API key
 
-            // Jika ada data tambahan di user, bisa disimpan juga
-            // localStorage.setItem('role', data.user.Role);
-
-            // Arahkan ke halaman character creation
             window.location.href = 'home.html';
         })
         .catch(() => {

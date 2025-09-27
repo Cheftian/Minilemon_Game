@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Meeting Room with Map</title>
+  <title>MLS Pixel V2 - Meeting Room</title>
   <link rel="stylesheet" href="css/room.css">
   <link rel="stylesheet" href="css/map.css">
 </head>
@@ -11,7 +11,11 @@
   <div class="modal-content">
     <h3>Enter Your Name</h3>
     <input type="text" id="username-input" placeholder="Your name" />
-    <!-- <button onclick="saveUsername()">Enter</button> -->
+    
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-secondary" onclick="closeUsernameModal()">Batal</button>
+      <button class="modal-btn modal-btn-primary" onclick="saveUsername()">Selesai</button>
+    </div>
   </div>
 </div>
 <body>
@@ -19,7 +23,7 @@
   <header>
     <div class="header-content">
       <span id="meeting-name" class="meeting-name"></span>
-      <span class="garis">|</span>
+      <span class="garis"></span>
       <button class="copy-btn" onclick="copyLink()">Copy Code
         <!-- <img src="images/icons/copy link.png" alt="copyUrl"> -->
       </button>
@@ -41,34 +45,38 @@
     <div class="side-panels">
       
       <!-- Chat -->
-      <div id="chat-panel" class="panel hidden">
-        <h3 class="chat-header">Chat</h3>
-        <div id="chat-subheader" class="chat-subheader">Broadcast - <span id="chat-space-name"></span></div>
+      <div id="chat-panel" class="panel">
+      <h3 id="chat-header">Chat</h3>
 
-        
-        <div id="chat-messages">
-          </div>
-        <div id="typing-indicator-container" class="typing-indicator-container">
-          <div id="typing-indicator" class="typing-indicator"></div>
-        </div>
-        
-        <div class="chat-input-container">
-          <input type="text" id="chat-input" placeholder="Type a message..." />
-          <div class="chat-settings-wrapper">
-            <button id="chat-settings">⋮</button>
-            
-            <!-- Dropdown Menu -->
-            <div id="chat-dropdown" class="dropdown hidden">
-              <button class="chat-mode-btn" data-mode="Broadcast">Broadcast</button>
-              <!-- <button class="chat-mode-btn" data-mode="Personal">Personal</button> -->
-              <button class="chat-mode-btn" data-mode="Area">Area</button>
-            </div>
+      <div id="chat-subheader" class="chat-subheader">
+        <span id="chat-mode-text"></span> <div class="chat-settings-wrapper" style="position: relative;">
+          <button id="chat-settings">
+            <span class="arrow-down"></span>
+          </button>
+          <div id="chat-dropdown" class="dropdown hidden">
+            <button class="chat-mode-btn" data-mode="Broadcast">Broadcast</button>
+            <button class="chat-mode-btn" data-mode="Area">Area</button>
           </div>
         </div>
       </div>
+
+      <div class="chat-main-area">
+        <div id="chat-messages">
+          </div>
+        <div id="typing-indicator-container">
+          <div id="typing-indicator" class="typing-indicator"></div>
+        </div>
+        <div class="chat-input-container">
+          <input type="text" id="chat-input" placeholder="Ketik pesan..." />
+          <button id="send-chat-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z"></path></svg>
+          </button>
+        </div>
+      </div>
+    </div>
       
       
-      <div id="participants-panel" class="panel hidden">
+      <div id="participants-panel" class="panel">
         <h3>Participants</h3>
         <ul id="participants-list"></ul>
       </div>
@@ -83,20 +91,36 @@
       <span class="user-icon">
         <img id="footer-profile-img" src="" alt="Profile" />
       </span>
-      <div>
-        <div id="footer-username" class="username" onclick="openUsernameModal()" title="Click to Change Username">
-          Username
-        </div>
-        <button onclick="window.location.href='character-creation.html'">Edit Characters</button>
+      <div class="edit-username">
+        <div id="footer-username" class="username">Username</div>
+        <button class="edit-username-btn" onclick="openUsernameModal()">Edit Username</button>
       </div>
     </div>
 
     <div class="controls">
       <button class="microphone-btn">
-        <img src="images/icons/microphone.png" alt="microphone" class="mic-img" />
+        <svg class="icon-mic-on" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="22"></line>
+        </svg>
+        <svg class="icon-mic-off" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+            <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
+            <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+        </svg>
       </button>
       <button class="camera-btn">
-        <img src="images/icons/video.png" alt="camera" class="camera-img" />
+        <svg class="icon-cam-on" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+        <svg class="icon-cam-off" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+            <path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h4a2 2 0 0 1 2 2v9.34m-7.72-2.06a4 4 0 1 1-5.56-5.56"></path>
+        </svg>
       </button>
     </div>
     <video id="camera-preview" autoplay muted playsinline style="display: none; width: 120px; height: 90px; margin-left: 10px; border-radius: 8px; object-fit: cover;"></video>
@@ -104,20 +128,30 @@
     
     <div class="footer-right">
       <span class="chat-icon" onclick="togglePanel('chat')">
-        <img src="images/icons/chat.png" alt="chat" class="chat-img">
+        <svg xmlns="http://www.w3.org/2000/svg" class="chat-img" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M21 11.5a8.38 8.38 0 0 1-1.9 5.4A8.5 8.5 0 0 1 12 21a8.38 8.38 0 0 1-5.4-1.9L3 21l1.4-3.6A8.38 8.38 0 0 1 3 11.5 8.5 8.5 0 1 1 21 11.5z"/>
+        </svg>
       </span>
       <span class="participants-icon" onclick="togglePanel('participants')">
-        <img src="images/icons/participant.png" alt="participant" class="participant-img">
+        <svg xmlns="http://www.w3.org/2000/svg" class="participant-img" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
       </span>
+      <span class="garis-footer"></span>
       <button class="leave-btn" onclick="leaveMeeting()">
-        <img src="images/icons/leave.png" alt="leave" class="leave-img">
+        <svg xmlns="http://www.w3.org/2000/svg" class="leave-img" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" x2="9" y1="12" y2="12"/>
+        </svg>
       </button>
     </div>
   </footer>
 
-
   <script>
-
   // ===== 1. Global Variables =====
   const userId = localStorage.getItem("user_id");
   const token = localStorage.getItem("token");
@@ -134,7 +168,6 @@
 
   const currentRooms = JSON.parse(localStorage.getItem('currentRooms')) || [];
   const currentRoomId = localStorage.getItem("currentRoomId")
-  
   
   let activeChatAreaId = null;
   let currentAreaObjectId = null;
@@ -161,7 +194,7 @@
     const currentRoomId = localStorage.getItem("currentRoomId");
     const spacesMemberId = localStorage.getItem("spaces_member_id");
     const username = localStorage.getItem("username");
-    const characterID = localStorage.getItem("user_characters"); // <-- Tambahkan ini
+    const characterID = localStorage.getItem("user_characters");
 
     if (!spacesMemberId || !username || !currentRoomId || !characterID) {
       console.error("Missing required data from localStorage", {
@@ -195,10 +228,12 @@
           SpacesMember_ID: spacesMemberId,
           Username: username,
           RoomID: currentRoomId,
-          Character_ID: characterID // <-- Kirim ke server
+          Character_ID: characterID
         });
 
         loadMap();
+
+        initBroadcastChat();
       });
 
       socket.onmessage = (event) => {
@@ -273,11 +308,10 @@
     console.error("Failed to fetch room positions:", err);
   });
 
-
   // Fungsi untuk kirim data ke server WebSocket
   function sendWebSocketRequest(type, payload) {
     const message = JSON.stringify({ type, payload });
-    console.log("[WebSocket] Sending:", message); // Tambahan debug
+    console.log("[WebSocket] Sending:", message);
     if (socket.readyState === WebSocket.OPEN) {
       socket.send(message);
     } else {
@@ -285,7 +319,6 @@
     }
   }
 
-  
   async function fetchRoomsPosition(spacesId) {
     const response = await fetch(`http://localhost:8000/rooms/space/${spacesId}`);
     if (!response.ok) {
@@ -303,10 +336,8 @@
     // Simpan ke localStorage dalam bentuk string JSON
     localStorage.setItem('currentRooms', JSON.stringify(roomData));
 
-
       const container = document.getElementById('map-container');
       let mapName = 'lantai1';
-
 
       // Cari Room_ID yang sesuai dengan Room_Name (lantai1 atau lantai2)
       const matchedRoom = rooms.find(room => room.Room_Name === mapName);
@@ -320,10 +351,7 @@
     return roomData;
   }
 
-
-    // ===== 3. Map Rendering =====
-    // loadMap();
-
+    // ===== 3. Map Rendering ======
     function getTilesetForId(tilesets, id) {
       let selected = null;
       for (let i = 0; i < tilesets.length; i++) {
@@ -501,8 +529,6 @@
 
               }
               break;
-
-
           }
         }
       });
@@ -518,8 +544,6 @@
     }
 
     // ===== 4. Player Movement =====
-
-    
     function smoothMovePlayer(dx, dy, walkDirection) {
       const stepCount = 8;
       const stepSize = 4;
@@ -571,7 +595,6 @@
       }, 30);
     }
     
-    
     function isColliding(x, y) {
       return colliders.some(c =>
       x < c.x + c.width && x + 32 > c.x && y < c.y + c.height && y + 32 > c.y
@@ -599,38 +622,60 @@
     let moveQueue = [];
     
     document.addEventListener('keydown', function(e) {
-      // Jika sedang mengetik di chat input, hentikan input gerakan
-      const activeElement = document.activeElement;
-      if (activeElement && activeElement.id === 'chat-input') return;
+    // Jika sedang mengetik di chat input, hentikan input gerakan
+    const activeElement = document.activeElement;
+    if (activeElement && activeElement.id === 'chat-input') return;
 
-      const key = e.key.toLowerCase();
-      let dx = 0, dy = 0, dir = 0;
+    const key = e.key; // Gunakan e.key tanpa toLowerCase() untuk mengenali panah
+    const PAN_SPEED = 40;
 
-      if (isMoving) return;
-
+    // --- BLOK BARU UNTUK KONTROL KAMERA DENGAN PANAH ---
+    const arrowKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+    if (arrowKeys.includes(key)) {
+      e.preventDefault(); // Mencegah scroll default browser
+      const mapWrapper = document.getElementById('map-container-wrapper');
+      
       switch (key) {
-        case 'w':
-          dy = -1;
-          dir = 1;
+        case 'ArrowUp':
+          mapWrapper.scrollBy({ top: -PAN_SPEED, behavior: 'smooth' });
           break;
-        case 's':
-          dy = 1;
-          dir = 0;
+        case 'ArrowDown':
+          mapWrapper.scrollBy({ top: PAN_SPEED, behavior: 'smooth' });
           break;
-        case 'a':
-          dx = -1;
-          dir = 2;
+        case 'ArrowLeft':
+          mapWrapper.scrollBy({ left: -PAN_SPEED, behavior: 'smooth' });
           break;
-        case 'd':
-          dx = 1;
-          dir = 3;
+        case 'ArrowRight':
+          mapWrapper.scrollBy({ left: PAN_SPEED, behavior: 'smooth' });
           break;
-        default:
-          return;
       }
+      return; // Hentikan eksekusi agar tidak menggerakkan pemain
+    }
+    // --- BATAS AKHIR BLOK BARU ---
 
-      smoothMovePlayer(dx, dy, dir);
-    });
+    // Logika gerakan pemain tetap sama
+    if (isMoving) return;
+    
+    let dx = 0, dy = 0, dir = 0;
+    switch (key.toLowerCase()) { // Gunakan toLowerCase() hanya untuk WASD
+      case 'w':
+        dy = -1; dir = 1;
+        break;
+      case 's':
+        dy = 1; dir = 0;
+        break;
+      case 'a':
+        dx = -1; dir = 2;
+        break;
+      case 'd':
+        dx = 1; dir = 3;
+        break;
+      default:
+        return;
+    }
+
+    smoothMovePlayer(dx, dy, dir);
+  });
 
       document.addEventListener('keyup', stopWalkAnimation);
       
@@ -646,7 +691,6 @@
         left: 2,
         right: 3
       };
-
 
       function moveOtherPlayer(id, x, y, directionStr = "down") {
         const el = otherPlayersMap.get(String(id));
@@ -668,8 +712,6 @@
           el.stopAnimTimeout = setTimeout(() => stopOtherPlayerAnimation(id), 500);
         }
       }
-
-
 
       async function addOtherPlayer(user) {
         const userId = String(user.id);
@@ -694,7 +736,6 @@
         });
 
       }
-
 
       async function createOtherPlayerElement(user) {
         const container = document.createElement("div");
@@ -761,7 +802,6 @@
         otherPlayerAnimationFrames.set(id, 1);
       }
 
-
     // ===== 6. Area Check =====
     async function checkAreas(x, y, areas, label) {
       let foundArea = null;
@@ -810,7 +850,7 @@
             
               if (currentMode === "Area") {
                 input.disabled = false;
-                subheader.textContent = `Mode - Area (${activeChatAreaId})`;
+                chatModeText.textContent = `Area - ${foundArea.name}`;
                 await loadChatHistory(areaChatId);
               }
             }
@@ -845,7 +885,7 @@
         areaChatMemberId = null;
 
         if (currentMode === "Area") {
-          subheader.textContent = `Mode - Area`;
+          chatModeText.textContent = `Area`;
           displayAreaPlaceholder();
         }
 
@@ -901,8 +941,6 @@
       }
     }
 
-
-
     // ===== 7. Chat & Participants Panel =====
     function copyLink() {
       const currentSpace = JSON.parse(localStorage.getItem("currentSpace") || "{}");
@@ -920,11 +958,11 @@
       const chatPanel = document.getElementById("chat-panel");
       const participantsPanel = document.getElementById("participants-panel");
       if (type === "chat") {
-        chatPanel.classList.toggle("hidden");
-        participantsPanel.classList.add("hidden");
+        participantsPanel.classList.remove("active"); // Selalu tutup panel lain
+        chatPanel.classList.toggle("active");
       } else if (type === "participants") {
-        participantsPanel.classList.toggle("hidden");
-        chatPanel.classList.add("hidden");
+        chatPanel.classList.remove("active"); // Selalu tutup panel lain
+        participantsPanel.classList.toggle("active");
       }
     }
 
@@ -961,7 +999,6 @@
         });
     }
 
-
     // ===== 8. DOM Ready Logic =====
     document.addEventListener("DOMContentLoaded", () => {
       
@@ -995,26 +1032,29 @@
         console.error("Element #chat-input tidak ditemukan!");
         return;
       }
-
-      // input.addEventListener("keydown", (e) => {
-      //   // console.log("[DEBUG] Key pressed:", e.key);
-      // });
-
-
     });
 
     // ===== 9. Camera Behavior =====
-    const videoArea = document.querySelector('.video-area');
-    videoArea.classList.add('zoomable');
-    videoArea.addEventListener('wheel', (e) => {
-      if (!e.target.closest('.video-area')) return;
-      e.preventDefault();
-      const delta = Math.sign(e.deltaY);
-      const zoomStep = 0.1;
-      if (delta < 0 && zoomLevel < 2) zoomLevel += zoomStep;
-      else if (delta > 0 && zoomLevel > 1) zoomLevel -= zoomStep;
-      videoArea.style.transform = `scale(${zoomLevel})`;
-    }, { passive: false });
+    const mapWrapper = document.getElementById('map-container-wrapper');
+
+    mapWrapper.addEventListener('wheel', (e) => {
+      // Cek jika scroll terjadi di dalam map-wrapper, BUKAN di panel
+      if (e.target.closest('#map-container-wrapper') && !e.target.closest('.panel')) {
+        e.preventDefault(); // Mencegah scroll default halaman
+        
+        const delta = Math.sign(e.deltaY);
+        const zoomStep = 0.1;
+
+        if (delta < 0 && zoomLevel < 2) { // Zoom In
+          zoomLevel += zoomStep;
+        } else if (delta > 0 && zoomLevel > 1) { // Zoom Out
+          zoomLevel -= zoomStep;
+        }
+        
+        // Terapkan transform HANYA ke mapWrapper
+        mapWrapper.style.transform = `scale(${zoomLevel})`;
+      }
+}, { passive: false });
 
     // ===== 10. Username Modal =====
     function openUsernameModal() {
@@ -1022,6 +1062,10 @@
       const input = document.getElementById("username-input");
       input.value = localStorage.getItem("username") || "";
       input.focus();
+    }
+
+    function closeUsernameModal() {
+      document.getElementById('username-modal').style.display = 'none';
     }
     
     async function saveUsername() {
@@ -1052,6 +1096,17 @@
         }
       }
     }
+
+    const chatPanel = document.getElementById('chat-panel');
+    const participantsPanel = document.getElementById('participants-panel');
+
+    function stopMapZoom(event) {
+      event.stopPropagation();
+    }
+
+    // Terapkan listener 'wheel' (untuk mouse scroll) ke kedua panel
+    chatPanel.addEventListener('wheel', stopMapZoom);
+    participantsPanel.addEventListener('wheel', stopMapZoom);
     
     // ===== 11. Controls =====    
     document.querySelector(".microphone-btn").addEventListener("click", async function () {
@@ -1120,23 +1175,41 @@
   // ===== 12. Participant =====
   function renderParticipantsList(participantsData) {
       const list = document.getElementById("participants-list");
-      if (!list) return; // Pengaman jika panel tidak ada
+      if (!list) return;
 
-      list.innerHTML = ""; // Kosongkan daftar sebelum melukis ulang
+      list.innerHTML = ""; // Kosongkan daftar
 
       participantsData.forEach(member => {
           const li = document.createElement("li");
 
-          // Kita ambil data langsung dari payload broadcast
-          const name = member.Username || "Unknown";
-          const isAdmin = member.Role === "Admin"; // Role perlu ditambahkan di server nanti
-          const mic = member.Active_Mic ? "🎤" : "";
-          const video = member.Active_Video ? "📷" : "";
+          const iconDiv = document.createElement("div");
+          iconDiv.className = "participant-icon";
+          
+          const img = document.createElement("img");
+          // Asumsi server mengirim Profile_Image, jika tidak ada, gunakan placeholder
+          img.src = member.Profile_Image ? `http://localhost:8000/${member.Profile_Image}` : 'https://via.placeholder.com/40';
+          img.alt = "Profile";
+          iconDiv.appendChild(img);
 
-          // Kita tentukan status online berdasarkan keberadaannya di daftar
-          const online = "🟢"; 
+          const infoDiv = document.createElement("div");
+          infoDiv.className = "participant-info";
 
-          li.innerHTML = `${online} ${name}${isAdmin ? " (admin)" : ""} ${mic} ${video}`;
+          const nameDiv = document.createElement("div");
+          nameDiv.className = "participant-name";
+          nameDiv.textContent = member.Username || "Unknown";
+
+          const statusDiv = document.createElement("div");
+          statusDiv.className = "participant-status";
+          const micStatus = member.Active_Mic ? "Mic On" : "Mic Off";
+          const videoStatus = member.Active_Video ? "Video On" : "Video Off";
+          statusDiv.textContent = `${micStatus}, ${videoStatus}`;
+
+          infoDiv.appendChild(nameDiv);
+          infoDiv.appendChild(statusDiv);
+
+          li.appendChild(iconDiv);
+          li.appendChild(infoDiv);
+          
           list.appendChild(li);
       });
   }
@@ -1241,10 +1314,8 @@
     }
   }
   
-  // Untuk player utama
   loadCharacterLayers(characterId, playerContainer);
-  
-  
+
    // ===== 14. Chats =====
   const input = document.getElementById("chat-input");
   const messages = document.getElementById("chat-messages");
@@ -1303,52 +1374,63 @@
   }
 
   function renderChatMessage(messageData) {
-      // Periksa apakah data dasar ada, jika tidak, jangan render apapun.
-      if (!messageData || !messageData.Message || !messageData.Username) {
-          console.warn("Mencoba merender pesan dengan data tidak lengkap:", messageData);
-          return; 
-      }
+    if (!messageData || !messageData.Message || !messageData.Username) {
+        return;
+    }
 
-      const { Message, Username, Profile_Image, created_at } = messageData;
-      const currentUser = localStorage.getItem("username");
-      const isSelf = Username === currentUser;
+    const { Message, Username, Profile_Image, created_at } = messageData;
+    const currentUser = localStorage.getItem("username");
+    const isSelf = Username === currentUser;
 
-      const msgWrapper = document.createElement("div");
-      // Gunakan class 'right' untuk pesan sendiri agar CSS bisa menatanya
-      msgWrapper.className = `chat-message ${isSelf ? 'right' : 'left'}`;
+    const msgWrapper = document.createElement("div");
+    msgWrapper.className = `chat-message ${isSelf ? 'right' : 'left'}`;
 
-      const userInfo = document.createElement("div");
-      userInfo.className = "chat-info";
-      
-      const img = document.createElement("img");
-      const selfImage = document.getElementById("footer-profile-img").src;
-      img.src = isSelf ? selfImage : (Profile_Image || "https://via.placeholder.com/30");
-      
-      const name = document.createElement("div");
-      name.className = "chat-username";
-      name.textContent = Username;
+    const profilePic = document.createElement("div");
+    profilePic.className = "chat-info";
+    const img = document.createElement("img");
+    const selfImage = document.getElementById("footer-profile-img").src;
+    img.src = isSelf ? selfImage : (Profile_Image || "https://via.placeholder.com/32");
+    profilePic.appendChild(img);
 
-      userInfo.appendChild(img);
-      userInfo.appendChild(name);
+    const bubbleWrapper = document.createElement("div");
+    bubbleWrapper.className = "bubble-wrapper";
 
-      const bubble = document.createElement("div");
-      bubble.className = "chat-bubble";
-      bubble.textContent = Message;
+    // Tampilkan nama pengguna HANYA untuk pesan dari orang lain, di ATAS bubble
+    if (!isSelf) {
+        const name = document.createElement("div");
+        name.className = "chat-username";
+        name.textContent = Username;
+        bubbleWrapper.appendChild(name);
+    }
 
-      const timestamp = document.createElement("div");
-      timestamp.className = "chat-timestamp";
-      if (created_at) {
-          const date = new Date(created_at);
-          const hours = String(date.getHours()).padStart(2, '0');
-          const minutes = String(date.getMinutes()).padStart(2, '0');
-          timestamp.textContent = `${hours}:${minutes}`;
-      }
+    const bubble = document.createElement("div");
+    bubble.className = "chat-bubble";
 
-      msgWrapper.appendChild(userInfo);
-      msgWrapper.appendChild(bubble);
-      msgWrapper.appendChild(timestamp);
+    // Masukkan teks pesan ke dalam <span> agar bisa ditata terpisah
+    const messageText = document.createElement("span");
+    messageText.className = "message-text";
+    messageText.textContent = Message;
 
-      messages.appendChild(msgWrapper);
+    // Masukkan timestamp ke dalam <span> agar bisa diletakkan di pojok
+    const timestamp = document.createElement("span");
+    timestamp.className = "chat-timestamp-bubble"; // Class baru agar tidak konflik
+    if (created_at) {
+        const date = new Date(created_at);
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        timestamp.textContent = `${hours}:${minutes}`;
+    }
+
+    // Masukkan teks dan timestamp KE DALAM BUBBLE
+    bubble.appendChild(messageText);
+    bubble.appendChild(timestamp);
+    
+    bubbleWrapper.appendChild(bubble);
+
+    msgWrapper.appendChild(profilePic);
+    msgWrapper.appendChild(bubbleWrapper);
+
+    messages.appendChild(msgWrapper);
   }
 
   // Variabel untuk mengatur jeda pengiriman sinyal 'mengetik'
@@ -1385,34 +1467,40 @@
   });
 
   // Logika saat mengganti mode chat
+  const chatModeText = document.getElementById('chat-mode-text');
+
   modeButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
       currentMode = btn.dataset.mode;
-      dropdown.classList.add("hidden");
       input.disabled = false;
 
+      dropdown.classList.add("hidden");
+
       if (currentMode === "Broadcast") {
-        subheader.textContent = `Mode - Broadcast - ${space.name}`;
-        // Pastikan server tahu kita di saluran Broadcast
+        chatModeText.textContent = `Broadcast - ${space.name}`;
         sendWebSocketRequest("join_chat", { Chats_ID: chatIdBroadcast });
         loadChatHistory(chatIdBroadcast);
       } else if (currentMode === "Area") {
         if (activeChatAreaId && areaChatId) {
-          subheader.textContent = `Mode - Area (${activeChatAreaId})`;
-          // Pastikan server tahu kita di saluran Area
+          const areaName = chatAreas.find(area => area.id === currentAreaObjectId)?.name || 'Unknown Area';
+          chatModeText.textContent = `Area - ${areaName}`;
           sendWebSocketRequest("join_chat", { Chats_ID: areaChatId });
           loadChatHistory(areaChatId);
         } else {
-          subheader.textContent = `Mode - Area`;
+          chatModeText.textContent = `Area`;
           displayAreaPlaceholder();
         }
       }
     });
   });
 
+  dropdown.addEventListener('click', function(event) {
+    event.stopPropagation();
+  });
+
   // Tampilkan nama space
   const space = JSON.parse(localStorage.getItem("currentSpace") || "{}");
-  document.getElementById("chat-space-name").textContent = space.name || "";
+  // document.getElementById("chat-space-name").textContent = space.name || "";
   
   // Dapatkan Chat ID & ChatMember ID untuk broadcast
   async function initBroadcastChat() {
@@ -1436,6 +1524,7 @@
       sendWebSocketRequest("join_chat", { Chats_ID: chatIdBroadcast });
 
       // --- PANGGIL FUNGSI UNTUK MEMUAT RIWAYAT CHAT ---
+      chatModeText.textContent = `Broadcast - ${space.name}`;
       await loadChatHistory(chatIdBroadcast);
 
     } catch (err) {
@@ -1443,49 +1532,59 @@
     }
   }
   
-  initBroadcastChat();
+  // initBroadcastChat();
   
-  if (input) {
-    input.addEventListener("keydown", async function (e) {
-      if (e.key === "Enter" && input.value.trim()) {
-        const msg = input.value.trim();
-        input.value = "";
-        
-        const username = localStorage.getItem("username");
-        const profileImg = document.getElementById("footer-profile-img").src;
+  const sendBtn = document.getElementById('send-chat-btn');
 
-        // Tampilkan pesan sendiri secara optimis
-        renderChatMessage({
-            Message: msg, Username: username, Profile_Image: profileImg,
-            created_at: new Date().toISOString()
-        });
-        messages.scrollTop = messages.scrollHeight;
-        
-        let targetChatId = null;
-        let targetChatMemberId = null;
+  // Fungsi terpusat untuk mengirim pesan
+  async function sendMessage() {
+    const msg = input.value.trim();
+    if (!msg) return; // Jangan kirim jika kosong
 
-        if (currentMode === "Broadcast") {
-            targetChatId = chatIdBroadcast;
-            targetChatMemberId = chatMemberId;
-        } else if (currentMode === "Area" && areaChatId) {
-            targetChatId = areaChatId;
-            targetChatMemberId = areaChatMemberId; // Kita perlu mengambil ID member area
-        }
-        
-        if (targetChatId && targetChatMemberId) {
-            // Kirim ke server WebSocket
-            sendWebSocketRequest("send_chat_message", {
-              SpacesMember_ID: spacesMemberId,
-              Chats_ID: targetChatId,
-              ChatsMember_ID: targetChatMemberId,
-              Message: msg,
-              Username: username,
-              Profile_Image: profileImg
-            });
-        }
-      }
+    input.value = ""; // Kosongkan input
+    
+    const username = localStorage.getItem("username");
+    const profileImg = document.getElementById("footer-profile-img").src;
+
+    // Tampilkan pesan sendiri secara optimis
+    renderChatMessage({
+        Message: msg, Username: username, Profile_Image: profileImg,
+        created_at: new Date().toISOString()
     });
+    messages.scrollTop = messages.scrollHeight;
+    
+    let targetChatId = null;
+    let targetChatMemberId = null;
+
+    if (currentMode === "Broadcast") {
+        targetChatId = chatIdBroadcast;
+        targetChatMemberId = chatMemberId;
+    } else if (currentMode === "Area" && areaChatId) {
+        targetChatId = areaChatId;
+        targetChatMemberId = areaChatMemberId;
+    }
+    
+    if (targetChatId && targetChatMemberId) {
+        sendWebSocketRequest("send_chat_message", {
+          SpacesMember_ID: spacesMemberId,
+          Chats_ID: targetChatId,
+          ChatsMember_ID: targetChatMemberId,
+          Message: msg,
+          Username: username,
+          Profile_Image: profileImg
+        });
+    }
   }
+
+// Listener untuk tombol Enter
+input.addEventListener("keydown", function (e) {
+  if (e.key === "Enter") {
+    sendMessage();
+  }
+});
+
+// Listener untuk tombol kirim (panah)
+sendBtn.addEventListener("click", sendMessage);
 
 </script>
 </body>

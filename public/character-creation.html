@@ -3,25 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Character Creation</title>
+  <title>MLS Pixel V2 - Character Creation</title>
   <link rel="stylesheet" href="css/character-creation.css" />
 </head>
 <body>
-    <div id="greeting" class="greeting"></div>
-    <h1>Buat Karakter Kamu</h1>
-  
-    <div class="main-container">
-        <div class="preview-wrapper">
-          <div id="character-preview" class="character-preview"></div>
-        </div>
-      
-        <div class="clothing-columns">
-          <div id="clothing-left" class="clothing-column"></div>
-          <div id="clothing-right" class="clothing-column"></div>
-        </div>
-      </div>
-      
-    <button id="submit-character">Pilih Karakter</button>
+    <div class="creator-container">
+        <header class="creator-header">
+            <h1>Buat Karakter Kamu</h1>
+            <p id="greeting" class="greeting"></p>
+        </header>
+
+        <main class="creator-layout">
+            <section class="preview-panel">
+                <div class="preview-wrapper">
+                    <div id="character-preview" class="character-preview"></div>
+                </div>
+            </section>
+
+            <section class="options-panel">
+                <div id="options-grid" class="options-grid">
+                    </div>
+            </section>
+        </main>
+
+        <footer class="creator-footer">
+            <button id="cancel-character" onclick="window.location.href='home.html'">Batal</button>
+            <button id="submit-character">Selesai</button>
+        </footer>
+    </div>
   
     <script>
       const types = ['Skin', 'Bottom', 'Shoes', 'Top', 'Jacket', 'Accessory', 'Hair', 'ClothesInSet'];
@@ -66,117 +75,171 @@
       function createControls(type, items, index) {
         const container = document.createElement('div');
         container.className = 'carousel-container';
+
         const title = document.createElement('h2');
         title.textContent = type;
         container.appendChild(title);
+
         const nav = document.createElement('div');
         nav.className = 'carousel';
+
+        // Buat elemen untuk menampilkan nama item
+        const itemNameDisplay = document.createElement('span');
+        itemNameDisplay.className = 'item-name';
+        itemNameDisplay.id = `item-name-${type}`; // Beri ID unik
+        itemNameDisplay.textContent = items[currentIndex[type]]?.Name || 'None';
+
         const left = document.createElement('button');
         left.textContent = '◀';
         left.className = 'nav-btn';
         left.onclick = () => {
             currentIndex[type] = (currentIndex[type] - 1 + items.length) % items.length;
+            // Update nama item dan preview
+            itemNameDisplay.textContent = items[currentIndex[type]].Name;
             updatePreview();
         };
+
         const right = document.createElement('button');
         right.textContent = '▶';
         right.className = 'nav-btn';
         right.onclick = () => {
             currentIndex[type] = (currentIndex[type] + 1) % items.length;
+            // Update nama item dan preview
+            itemNameDisplay.textContent = items[currentIndex[type]].Name;
             updatePreview();
         };
+
         nav.appendChild(left);
+        nav.appendChild(itemNameDisplay); // Tambahkan display nama di tengah
         nav.appendChild(right);
         container.appendChild(nav);
 
-        // Masukkan ke kolom kiri atau kanan
-        const targetId = index < 4 ? 'clothing-left' : 'clothing-right';
-        document.getElementById(targetId).appendChild(container);
-        }
-
+        // Masukkan semua kontrol ke grid opsi yang baru
+        document.getElementById('options-grid').appendChild(container);
+    }
   
         async function loadAll() {
-            types.forEach(async (type, index) => {
-                const data = await fetchAllClothes(type);
-                clothingData[type] = data;
+          // Gunakan Promise.all untuk mengambil semua data pakaian secara paralel
+          const promises = types.map(type => fetchAllClothes(type));
+          const results = await Promise.all(promises);
 
-                if (type === 'Skin') {
-                const defaultSkinIndex = data.findIndex(item => item.Skin_ID === 1);
-                currentIndex[type] = defaultSkinIndex !== -1 ? defaultSkinIndex : 0;
-                } else {
-                currentIndex[type] = 0;
-                }
+          // Setelah semua data diterima, proses datanya
+          types.forEach((type, index) => {
+              const data = results[index];
+              clothingData[type] = data;
 
-                createControls(type, data, index);
-            });
+              // Atur skin default atau 'None' untuk tipe lain
+              if (type === 'Skin') {
+                  const defaultSkinIndex = data.findIndex(item => item.Skin_ID === 1);
+                  currentIndex[type] = defaultSkinIndex !== -1 ? defaultSkinIndex : 0;
+              } else {
+                  currentIndex[type] = 0; // Default ke 'None'
+              }
+              
+              createControls(type, data, index);
+          });
 
-            const userRes = await fetch(`http://localhost:8000/users/${userId}`);
-            const user = await userRes.json();
-            if (user.Character_ID) {
-                characterId = user.Character_ID;
-                const charRes = await fetch(`http://localhost:8000/characters/${characterId}`);
-                const character = await charRes.json();
+          try {
+              const userRes = await fetch(`http://localhost:8000/users/${userId}`);
+              if (!userRes.ok) return;
 
-                types.forEach(type => {
-                const idKey = `${type}_ID`;
-                const id = character[idKey];
-                const list = clothingData[type];
-                const index = list.findIndex(item => item[idKey] === id);
-                currentIndex[type] = index !== -1 ? index : currentIndex[type];
-                });
-            }
+              const user = await userRes.json();
+              if (user.Character_ID) {
+                  characterId = user.Character_ID;
+                  const charRes = await fetch(`http://localhost:8000/characters/${characterId}`);
+                  if (!charRes.ok) return; // Karakter tidak ditemukan
 
-            updatePreview();
-            }
+                  const character = await charRes.json();
+
+                  // Atur tampilan berdasarkan karakter yang tersimpan
+                  types.forEach(type => {
+                      const idKey = `${type}_ID`;
+                      const id = character[idKey];
+                      const list = clothingData[type];
+                      if (list) {
+                          const index = list.findIndex(item => item[idKey] === id);
+                          currentIndex[type] = index !== -1 ? index : 0; // Jika tidak ditemukan, default ke 'None'
+                          const itemNameDisplay = document.getElementById(`item-name-${type}`);
+                          if(itemNameDisplay) itemNameDisplay.textContent = list[currentIndex[type]].Name;
+                      }
+                  });
+              }
+          } catch (error) {
+              console.error("Gagal memuat data user/karakter:", error);
+          }
+          
+          // Panggil updatePreview terakhir untuk menampilkan hasil akhir
+          updatePreview();
+
+          startIdleAnimation();
+      }
 
   
       document.getElementById('submit-character').addEventListener('click', async () => {
         if (!userId) return alert("User belum login");
-        updatePreview();
-  
+        updatePreview(); // Memastikan 'selected' terisi nilai terbaru
+
         const payload = {};
         types.forEach(type => {
-          const key = `${type}_ID`;
-          if (typeof selected[key] !== 'undefined') {
-            payload[key] = selected[key];
-          }
+            const key = `${type}_ID`;
+            // Pastikan hanya ID yang valid (bukan undefined/null) yang dikirim
+            if (selected[key] !== null && typeof selected[key] !== 'undefined') {
+                payload[key] = selected[key];
+            } else {
+                payload[key] = null; // Kirim null jika 'None' dipilih
+            }
         });
-  
+
         try {
-          let response;
-  
-          if (characterId) {
-            response = await fetch(`http://localhost:8000/characters/${characterId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
-            });
-            localStorage.setItem('user_characters', data.user.Character_ID);
-            alert("Karakter berhasil diperbarui!");
-          } else {
-            response = await fetch('http://localhost:8000/characters', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
-            });
-            const result = await response.json();
-            characterId = result.id;
+            let response;
+            let result;
+
+            if (characterId) {
+                // --- UPDATE KARAKTER ---
+                response = await fetch(`http://localhost:8000/characters/${characterId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error('Gagal memperbarui karakter di server.');
+                
+                // Simpan Character_ID yang sudah ada ke localStorage
+                localStorage.setItem('user_characters', characterId);
+                alert("Karakter berhasil diperbarui!");
+
+            } else {
+                // --- BUAT KARAKTER BARU ---
+                response = await fetch('http://localhost:8000/characters', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error('Gagal membuat karakter baru di server.');
+                
+                result = await response.json();
+                characterId = result.id;
+                
+                // Kaitkan karakter baru ke user
+                const userUpdateResponse = await fetch(`http://localhost:8000/users/${userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ Character_ID: characterId })
+                });
+                if (!userUpdateResponse.ok) throw new Error('Gagal mengaitkan karakter ke user.');
+
+                // Simpan Character_ID yang baru dibuat ke localStorage
+                localStorage.setItem('user_characters', characterId);
+                alert("Karakter berhasil dibuat dan dikaitkan ke akun!");
+            }
             
-            await fetch(`http://localhost:8000/users/${userId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ Character_ID: characterId })
-            });
-            
-            localStorage.setItem('user_characters', data.user.Character_ID);
-            alert("Karakter berhasil dibuat dan dikaitkan ke akun!");
-          }
-  
+            // Redirect ke halaman lain setelah berhasil
+            window.location.href = 'home.html';
+
         } catch (err) {
-          console.error("Error:", err);
-          alert("Gagal menyimpan karakter. Cek console.");
+            console.error("Error:", err);
+            alert("Gagal menyimpan karakter. Cek console untuk detail.");
         }
-      });
+    });
   
       loadAll();
 
@@ -189,20 +252,33 @@
 
         let currentCol = 0;
 
-        setInterval(() => {
-          const offsetX = -currentCol * frameWidth;
-          const offsetY = -row * frameHeight;
+        let lastFrameTime = 0;
+        const frameInterval = 300; // Ganti frame setiap 300ms (0.3 detik)
 
-          const layers = document.querySelectorAll('.character-preview .layer');
-          layers.forEach(layer => {
-            layer.style.objectPosition = `${offsetX}px ${offsetY}px`;
-          });
+        function animateIdle(currentTime) {
+            if (!lastFrameTime) lastFrameTime = currentTime;
 
-          currentCol = (currentCol + 1) % totalCols;
-        }, 300);
+            const deltaTime = currentTime - lastFrameTime;
+
+            if (deltaTime >= frameInterval) {
+                const offsetX = -currentCol * frameWidth;
+                const offsetY = -row * frameHeight;
+
+                // Pastikan elemen .character-preview .layer sudah ada
+                const layers = document.querySelectorAll('.character-preview .layer');
+                layers.forEach(layer => {
+                    layer.style.objectPosition = `${offsetX}px ${offsetY}px`;
+                });
+
+                currentCol = (currentCol + 1) % totalCols;
+                lastFrameTime = currentTime; // Reset waktu frame terakhir
+            }
+
+            requestAnimationFrame(animateIdle);
+        }
+
+        requestAnimationFrame(animateIdle);
       }
-
-
 
     startIdleAnimation();
 

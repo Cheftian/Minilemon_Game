@@ -1,184 +1,249 @@
-/* Reset dasar */
+@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;700&display=swap');
+
+:root {
+    --primary-color: #FFFFFF;
+    --secondary-color: #A054E3;
+    --tertiary-color: #FFDD00;
+    --bg-color: #f0f2f5;
+    --panel-color: var(--primary-color);
+    --card-color: #fafafa;
+    --primary-text-color: #1c1e21;
+    --secondary-text-color: #606770;
+    --accent-color: var(--tertiary-color);
+    --accent-hover-color: #f0cc00;
+    --secondary-hover-color: #b16cf5;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
 * {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+    font-family: 'Pixelify Sans', sans-serif;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
 body {
-  font-family: 'Segoe UI', sans-serif;
-  background: #f4f7fa;
-  color: #333;
-  padding: 2rem;
-  line-height: 1.6;
+    background-color: var(--bg-color);
+    color: var(--secondary-text-color);
+    line-height: 1.6;
 }
 
-h1 {
-  text-align: center;
-  margin-bottom: 2rem;
-  font-size: 2.4rem;
-  color: #222;
+.creator-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
 }
 
-.greeting {
-  font-size: 1.1rem;
-  margin-bottom: 1.5rem;
-  text-align: center;
+/* Header */
+.creator-header {
+    text-align: center;
+    margin-bottom: 2rem;
 }
 
-.main-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr; /* 4 kolom */
-  gap: 2rem;
-  margin-bottom: 3rem;
+.creator-header h1 {
+    font-size: 2.8rem;
+    color: var(--accent-color);
+    text-shadow: 0 2px 4px rgba(160, 84, 227, 0.2);
+}
+
+.creator-header {
+    font-size: 1.1rem;
+    opacity: 0.8;
+}
+
+.greeting strong {
+    color: var(--secondary-color);
+    -webkit-text-stroke: 1px #d9a200;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.creator-layout {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 2rem;
+    align-items: flex-start;
+}
+
+.preview-panel {
+    position: sticky;
+    top: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--panel-color);
+    border-radius: 16px;
+    padding: 10.8rem;
+    box-shadow: 0 8px 24px var(--shadow-color);
 }
 
 .preview-wrapper {
-  grid-column: span 2;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: #fff;
-  border-radius: 1rem;
-  padding: 1.5rem;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    background: url('https://www.transparenttextures.com/patterns/dark-matter.png');
+    border: 3px solid var(--secondary-color);
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 0 20px rgba(255, 221, 0, 0.3);
 }
-
-.clothing-columns {
-  display: contents;
-}
-
-.clothing-column {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  max-height: 700px;
-  overflow-y: auto;
-  padding-right: 0.5rem;
-}
-
-/* ==== CHARACTER PREVIEW ==== */
 
 .character-preview {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  transform: scale(6); /* PERBESAR TAMPILAN */
-  transform-origin: top left;
-  background: #eee;
-  border-radius: 0.5rem;
-  overflow: hidden;
-}
-
-.character-preview .frame {
-  width: 32px;
-  height: 32px;
-  overflow: hidden;
-  position: relative;
+    position: relative;
+    width: 32px;
+    height: 32px;
+    transform: scale(8);
+    transform-origin: center;
+    image-rendering: pixelated;
+    overflow: hidden;
 }
 
 .character-preview .layer {
-  position: absolute;
-  width: 96px;   /* Ukuran full tileset */
-  height: 128px;
-  object-fit: none;
-  image-rendering: pixelated;
+    position: absolute;
+    width: 96px;
+    height: 128px;
+    object-fit: none;
 }
 
-/* Optional: Fade efek saat berpindah layer */
-.character-preview img {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: auto;
-  z-index: 1;
-  transition: opacity 0.3s ease;
+.options-panel {
+    background-color: var(--panel-color);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 8px 24px var(--shadow-color);
 }
 
-/* ==== CLOTHING SECTIONS ==== */
-.clothing-sections {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  overflow-y: auto;
-  max-height: 700px;
-  padding-right: 1rem;
+.options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+    gap: 1.5rem;
 }
 
 .carousel-container {
-  background: #fff;
-  border-radius: 0.75rem;
-  padding: 1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    background: var(--card-color);
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.carousel-container:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 15px var(--shadow-color);
 }
 
 .carousel-container h2 {
-  margin-bottom: 0.8rem;
-  font-size: 1.1rem;
-  color: #555;
-  text-align: center;
+    font-size: 1.1rem;
+    color: var(--primary-text-color);
+    margin-bottom: 0.5rem;
 }
 
 .carousel {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.item-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    flex-grow: 1;
+    color: var(--secondary-text-color);
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 0.4rem;
+    border-radius: 6px;
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .nav-btn {
-  font-size: 1.2rem;
-  background: #f0f0f0;
-  border: 2px solid #ccc;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+    font-size: 1.2rem;
+    background: var(--secondary-color);
+    color: #333;
+    border: 2px solid var(--secondary-hover-color);
+    border-radius: 50%;
+    width: 38px;
+    height: 38px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
 }
 
 .nav-btn:hover {
-  background-color: #ddd;
-  border-color: #999;
+    background: var(--secondary-hover-color);
+    transform: scale(1.1);
 }
 
-/* ==== SUBMIT BUTTON ==== */
+.creator-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+}
+
 #submit-character {
-  display: block;
-  margin: 0 auto;
-  padding: 0.8rem 1.6rem;
-  font-size: 1.1rem;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.3s ease;
+    padding: 1rem 2.5rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px var(--shadow-color);
+    transition: all 0.3s ease;
 }
 
 #submit-character:hover {
-  background-color: #45a049;
+    background-color: var(--accent-hover-color);
+    transform: translateY(-3px);
+    box-shadow: 0 0 15px var(--secondary-color), 0 0 5px var(--secondary-color);
 }
 
-/* ==== RESPONSIVE ====*/
+#cancel-character {
+    padding: 1rem 2.5rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    background-color: #ccc;
+    color: #333;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    margin-right: 1rem;
+}
+
+#cancel-character:hover {
+    background-color: #bbb;
+    transform: translateY(-3px);
+    box-shadow: 0 0 15px var(--secondary-color), 0 0 5px var(--secondary-color);
+}
+
+/* === RESPONSIVE DESIGN === */
+@media (max-width: 1024px) {
+    .creator-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .preview-panel {
+        position: static;
+        margin-bottom: 2rem;
+    }
+
+    .character-preview {
+        transform: scale(7);
+    }
+}
 
 @media (max-width: 768px) {
-  .main-container {
-    flex-direction: column;
-    align-items: center;
-    gap: 2rem;
-  }
-
-  .clothing-sections {
-    width: 100%;
-    max-height: none;
-  }
-
-  .character-preview {
-    width: 220px;
-    height: 320px;
-  }
+    body {
+        padding: 1rem;
+    }
+    .creator-header h1 {
+        font-size: 2.2rem;
+    }
+    .character-preview {
+        transform: scale(6);
+    }
+    #submit-character {
+        width: 100%;
+        padding: 1rem;
+    }
 }
