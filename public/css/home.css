@@ -219,7 +219,7 @@ main {
     margin-bottom: 0.3rem;
     border-radius: 5px;
     box-sizing: border-box;
-    border: 1px solid #FFDD00;
+    border: 1px solid var(--primary-color);
 }
 
 .modal button {

@@ -1,0 +1,213 @@
+const userId = localStorage.getItem("user_id");
+const token = localStorage.getItem("token");
+
+if (!userId || !token) {
+    window.location.href = "signin.html";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    fetch(`http://localhost:8000/users/${userId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(user => {
+        document.getElementById("profile-img").src = "http://localhost:8000/" + user.Profile_Image;
+    });
+
+    fetchSpaces();
+});
+
+function toggleOverlay(type = null) {
+    document.getElementById("createOverlay").style.display = "none";
+    document.getElementById("joinOverlay").style.display = "none";
+
+    if (type === 'create') {
+        document.getElementById("createOverlay").style.display = "flex";
+    } else if (type === 'join') {
+        document.getElementById("joinOverlay").style.display = "flex";
+    }
+}
+
+function fetchSpaces() {
+    fetch(`http://localhost:8000/spacemember/byuser/${userId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(data => {
+        const list = document.getElementById("spaces-list");
+        list.innerHTML = "";
+
+        if (!Array.isArray(data) || data.length === 0) {
+            list.innerHTML = "<p class='center-message'>You haven't joined any spaces yet.</p>";
+        } else {
+            data.forEach(item => {
+                const space = item.space;
+                if (!space) return;
+
+                const div = document.createElement("div");
+                div.className = "space-card";
+                div.style.backgroundImage = `url(http://localhost:8000/${space.Banner_Image})`;
+
+                div.addEventListener("click", () => enterSpace(space.Spaces_ID, space));
+
+                div.innerHTML = `
+                    <button class="copy-button" onclick="event.stopPropagation(); copyToClipboard('${space.Code}')">Copy Code</button>
+                    <div class="card-top">
+                        <div class="space-number">Code: ${space.Code}</div>
+                    </div>
+                    <div class="card-bottom">
+                        <span class='space-name'>${space.Name}</span>
+                        <div class="menu-container">
+                            <button class="menu-button" onclick="event.stopPropagation(); toggleMenu(this)">⋮</button>
+                            <div class="dropdown-menu">
+                                <button onclick="event.stopPropagation(); deleteSpace('${space.Spaces_ID}')">Remove</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                list.appendChild(div);
+            });
+        }
+    })
+    .catch(err => {
+        console.error("Error fetching spaces:", err);
+        alert("Error loading your spaces.");
+    });
+}
+
+function deleteSpace(spaceId) {
+    if (!confirm("Are you sure you want to delete this space?")) return;
+    fetch(`http://localhost:8000/spaces/${spaceId}`, {
+        method: "DELETE",
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Failed to delete space");
+        alert("Space deleted!");
+        fetchSpaces();
+    })
+    .catch(() => alert("Failed to delete space."));
+}
+
+function toggleMenu(btn) {
+    // Tutup semua menu lain
+    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        if (menu !== btn.nextElementSibling) menu.style.display = 'none';
+    });
+    // Toggle menu yang diklik
+    const menu = btn.nextElementSibling;
+    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+}
+
+// Tutup menu jika klik di luar
+document.addEventListener('click', function(e) {
+    document.querySelectorAll('.dropdown-menu').forEach(menu => menu.style.display = 'none');
+});
+
+async function enterSpace(spaceId, space) {
+    try {
+        const res = await fetch(`http://localhost:8000/spacemember/${spaceId}/${userId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch space member");
+
+        const member = await res.json();
+
+        if (!member.SpacesMember_ID) {
+            alert("Failed to find space membership.");
+            return;
+        }
+
+        const enterRes = await fetch(`http://localhost:8000/userposition/enter/${member.SpacesMember_ID}`, {
+            method: "POST",
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!enterRes.ok) {
+            alert("Failed to enter room.");
+            return;
+        }
+
+        localStorage.setItem("currentSpace", JSON.stringify({
+            id: space.Spaces_ID,
+            name: space.Name,
+            code: space.Code
+        }));
+        localStorage.setItem("spaces_member_id", member.SpacesMember_ID);
+
+        window.location.href = "game.html";
+
+    } catch (err) {
+        console.error(err);
+        alert("Error entering space.");
+    }
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert("Code copied to clipboard!");
+    });
+}
+
+document.getElementById("createSpaceForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    const form = e.target;
+    const formData = new FormData(form);
+
+    fetch("http://localhost:8000/spaces", {
+        method: "POST",
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert("Space created: " + data.space.Name);
+        toggleOverlay('create');
+        fetchSpaces();
+    });
+});
+
+function joinSpace() {
+    const code = document.getElementById("join-code").value;
+    const password = document.getElementById("join-password").value;
+
+    fetch("http://localhost:8000/spaces/join", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ Code: code, Password: password })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert("Joined space: " + data.space.Name);
+        toggleOverlay('join');
+        fetchSpaces();
+    })
+    .catch(() => alert("Failed to join space."));
+}
+
+function logout() {
+    fetch("http://localhost:8000/logout", {
+        method: "POST",
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(() => {
+        localStorage.clear();
+        window.location.href = "signin.html";
+    });
+}
+
+function goToProfile() {
+    window.location.href = `profile.html?id=${userId}`;
+}
+
+window.addEventListener("click", function(e) {
+    if (e.target.classList.contains("overlay")) {
+        toggleOverlay();
+    }
+});
