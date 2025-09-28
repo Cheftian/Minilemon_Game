@@ -41,31 +41,32 @@
     <div class="side-panels">
       <!-- Chat -->
       <div id="chat-panel" class="panel">
-      <h3 id="chat-header">Chat</h3>
+        <h3 id="chat-header">Chat</h3>
 
-      <div id="chat-subheader" class="chat-subheader">
-        <span id="chat-mode-text"></span> <div class="chat-settings-wrapper" style="position: relative;">
-          <button id="chat-settings">
-            <span class="arrow-down"></span>
-          </button>
-          <div id="chat-dropdown" class="dropdown hidden">
-            <button class="chat-mode-btn" data-mode="Broadcast">Broadcast</button>
-            <button class="chat-mode-btn" data-mode="Area">Area</button>
+        <div id="chat-subheader" class="chat-subheader">
+          <span id="chat-mode-text"></span> <div class="chat-settings-wrapper" style="position: relative;">
+            <button id="chat-settings">
+              <span class="arrow-down"></span>
+            </button>
+            <div id="chat-dropdown" class="dropdown hidden">
+              <button class="chat-mode-btn" data-mode="Broadcast">Broadcast</button>
+              <button class="chat-mode-btn" data-mode="Area">Area</button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="chat-main-area">
-        <div id="chat-messages">
+        <div class="chat-main-area">
+          <div id="chat-messages">
+            </div>
+          <div id="typing-indicator-container">
+            <div id="typing-indicator" class="typing-indicator"></div>
           </div>
-        <div id="typing-indicator-container">
-          <div id="typing-indicator" class="typing-indicator"></div>
-        </div>
-        <div class="chat-input-container">
-          <input type="text" id="chat-input" placeholder="Ketik pesan..." />
-          <button id="send-chat-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z"></path></svg>
-          </button>
+          <div class="chat-input-container">
+            <input type="text" id="chat-input" placeholder="Ketik pesan..." />
+            <button id="send-chat-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z"></path></svg>
+            </button>
+          </div>
         </div>
       </div>
       
