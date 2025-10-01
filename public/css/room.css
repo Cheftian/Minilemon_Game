@@ -351,12 +351,18 @@ footer {
   background: #f0f0f0; 
 }
 
+#participants-list .participant-icon {
+  position: relative;
+  flex-shrink: 0; /* Mencegah ikon mengecil */
+}
+
 #participants-list .participant-icon img { 
   width: 40px; 
   height: 40px; 
   border-radius: 50%; 
   object-fit: cover; 
-  border: 2px solid #ddd; 
+  border: 2px solid #ddd;
+  background-color: #e0e0e0; /* Fallback jika gambar gagal dimuat */
 }
 
 #participants-list .participant-info { 
@@ -371,6 +377,18 @@ footer {
 #participants-list .participant-status { 
   font-size: 0.8em; 
   color: #888; 
+}
+
+.online-indicator {
+  position: absolute; /* Membuatnya melayang di atas gambar */
+  bottom: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  background-color: #4caf50; /* Warna hijau */
+  border-radius: 50%;
+  border: 2px solid white; /* Border putih agar menonjol */
+  box-shadow: 0 0 5px rgba(0,0,0,0.2);
 }
 
 /* === CHAT PANEL === */

@@ -115,34 +115,53 @@
         }
         
         if (data.type === "same_room_result" && data.data) {
-          data.data.forEach(player => {
-            const playerId = String(player.id);
+          const incomingPlayers = data.data;
+          const incomingPlayerIds = new Set(incomingPlayers.map(p => String(p.id)));
 
-            if (playerId !== String(spacesMemberId)) {
-              const direction = player.FacingDirection ?? 0;
-
-            if (otherPlayersMap.has(playerId)) {
-              moveOtherPlayer(
-                playerId,
-                player.PosX * 32,
-                player.PosY * 32,
-                player.FacingDirection ?? 0
-              );
-
-              } else {
-                addOtherPlayer({
-                  id: playerId,
-                  Username: player.Username,
-                  PosX: player.PosX * 32,
-                  PosY: player.PosY * 32,
-                  Character_ID: player.Character_ID,
-                  FacingDirection: direction,
-                });
+          // --- Langkah 1: HAPUS pemain yang sudah tidak ada ---
+          for (const [playerId, playerElement] of otherPlayersMap.entries()) {
+              if (!incomingPlayerIds.has(playerId)) {
+                  // Jika pemain di peta kita tidak ada di daftar baru, hapus dia
+                  playerElement.remove(); // Hapus dari layar
+                  otherPlayersMap.delete(playerId); // Hapus dari memori
+                  console.log(`[Sync] Removed player ${playerId} who left.`);
               }
-            }
+          }
+
+          // --- Langkah 2 & 3: UPDATE pemain yang ada & TAMBAH pemain baru ---
+          incomingPlayers.forEach(playerData => {
+              const playerId = String(playerData.id);
+
+              // Jangan render diri sendiri
+              if (playerId === String(spacesMemberId)) return;
+
+              const direction = playerData.FacingDirection ?? "down";
+
+              if (otherPlayersMap.has(playerId)) {
+                  // Jika pemain sudah ada, UPDATE posisinya
+                  moveOtherPlayer(
+                      playerId,
+                      playerData.PosX * 32,
+                      playerData.PosY * 32,
+                      direction
+                  );
+              } else {
+                  // Jika pemain belum ada, TAMBAHKAN dia
+                  addOtherPlayer({
+                      id: playerId,
+                      Username: playerData.Username,
+                      PosX: playerData.PosX * 32,
+                      PosY: playerData.PosY * 32,
+                      Character_ID: playerData.Character_ID,
+                      FacingDirection: direction,
+                  });
+                  console.log(`[Sync] Added new player ${playerId}.`);
+              }
           });
-          renderParticipantsList(data.data);
-        }
+
+          // Perbarui daftar partisipan di panel (logika ini tetap sama)
+          renderParticipantsList(incomingPlayers);
+      }
       };
 
     })
@@ -554,11 +573,13 @@
         const userId = String(user.id);
         if (otherPlayersMap.has(userId)) return;
 
+        otherPlayersMap.set(userId, true); 
+        
         const el = await createOtherPlayerElement(user);
         el.style.left = `${user.PosX}px`;
         el.style.top = `${user.PosY}px`;
 
-        otherPlayersMap.set(userId, el);
+        otherPlayersMap.set(userId, el); 
         otherPlayersContainer.appendChild(el);
         
         const directionStr = user.FacingDirection ?? "down";
@@ -571,7 +592,6 @@
         imgs.forEach(img => {
           img.style.objectPosition = `-${32}px -${32 * direction}px`;
         });
-
       }
 
       async function createOtherPlayerElement(user) {
@@ -1007,44 +1027,51 @@
     
   // ===== 12. Participant =====
   function renderParticipantsList(participantsData) {
-      const list = document.getElementById("participants-list");
-      if (!list) return;
+    const list = document.getElementById("participants-list");
+    if (!list) return;
 
-      list.innerHTML = ""; // Kosongkan daftar
+    list.innerHTML = ""; // Kosongkan daftar
 
-      participantsData.forEach(member => {
-          const li = document.createElement("li");
+    participantsData.forEach(member => {
+        const li = document.createElement("li");
 
-          const iconDiv = document.createElement("div");
-          iconDiv.className = "participant-icon";
-          
-          const img = document.createElement("img");
-          // Asumsi server mengirim Profile_Image, jika tidak ada, gunakan placeholder
-          img.src = member.Profile_Image ? `http://localhost:8000/${member.Profile_Image}` : 'https://via.placeholder.com/40';
-          img.alt = "Profile";
-          iconDiv.appendChild(img);
+        const iconDiv = document.createElement("div");
+        iconDiv.className = "participant-icon";
+        
+        const img = document.createElement("img");
+        // PERBAIKAN: Kode ini sekarang akan bekerja setelah back-end mengirim Profile_Image
+        console.log("Member Profile Image:", member.Profile_Image);
+        img.src = member.Profile_Image ? `http://localhost:8000/${member.Profile_Image}` : 'https://via.placeholder.com/40';
+        img.alt = "Profile";
 
-          const infoDiv = document.createElement("div");
-          infoDiv.className = "participant-info";
+        // PENAMBAHAN: Buat elemen untuk lingkaran hijau
+        const onlineIndicator = document.createElement("div");
+        onlineIndicator.className = "online-indicator";
 
-          const nameDiv = document.createElement("div");
-          nameDiv.className = "participant-name";
-          nameDiv.textContent = member.Username || "Unknown";
+        iconDiv.appendChild(img);
+        iconDiv.appendChild(onlineIndicator); // Tambahkan lingkaran ke dalam wadah ikon
 
-          const statusDiv = document.createElement("div");
-          statusDiv.className = "participant-status";
-          const micStatus = member.Active_Mic ? "Mic On" : "Mic Off";
-          const videoStatus = member.Active_Video ? "Video On" : "Video Off";
-          statusDiv.textContent = `${micStatus}, ${videoStatus}`;
+        const infoDiv = document.createElement("div");
+        infoDiv.className = "participant-info";
 
-          infoDiv.appendChild(nameDiv);
-          infoDiv.appendChild(statusDiv);
+        const nameDiv = document.createElement("div");
+        nameDiv.className = "participant-name";
+        nameDiv.textContent = member.Username || "Unknown";
 
-          li.appendChild(iconDiv);
-          li.appendChild(infoDiv);
-          
-          list.appendChild(li);
-      });
+        const statusDiv = document.createElement("div");
+        statusDiv.className = "participant-status";
+        const micStatus = member.Active_Mic ? "Mic On" : "Mic Off";
+        const videoStatus = member.Active_Video ? "Video On" : "Video Off";
+        statusDiv.textContent = `${micStatus}, ${videoStatus}`;
+
+        infoDiv.appendChild(nameDiv);
+        infoDiv.appendChild(statusDiv);
+
+        li.appendChild(iconDiv);
+        li.appendChild(infoDiv);
+        
+        list.appendChild(li);
+    });
   }
   
   // ===== 13. Characters =====
